@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Modulos dependem somente de Core e Infrastructure (base de persistencia); nunca de outros modulos. -->
+    <ProjectReference Include="..\..\RiskGuard.Core\RiskGuard.Core.csproj" />
+    <ProjectReference Include="..\..\RiskGuard.Infrastructure\RiskGuard.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RiskGuard.UnitTests" />
+    <InternalsVisibleTo Include="RiskGuard.IntegrationTests" />
+  </ItemGroup>
+</Project>
