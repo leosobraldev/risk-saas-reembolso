@@ -18,6 +18,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
 
     public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
 
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
     protected override string Schema => SchemaName;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -63,6 +65,18 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options, I
             entity.Property(u => u.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.HasIndex(u => u.ExternalUserId).IsUnique(); // um usuario do provedor pertence a um unico lojista
             entity.HasIndex(u => u.TenantId);
+        });
+
+        modelBuilder.Entity<AuditEvent>(entity =>
+        {
+            entity.ToTable("AuditEvents");
+            entity.HasKey(e => e.Id);
+            entity.Ignore(e => e.DomainEvents);
+            entity.Property(e => e.ActorId).HasMaxLength(AuditEvent.ActorMaxLength).IsRequired();
+            entity.Property(e => e.Action).HasMaxLength(AuditEvent.ActionMaxLength).IsRequired();
+            entity.Property(e => e.Target).HasMaxLength(AuditEvent.TargetMaxLength);
+            entity.Property(e => e.Details).HasMaxLength(AuditEvent.DetailsMaxLength);
+            entity.HasIndex(e => new { e.TenantId, e.OccurredAt });
         });
 
         base.OnModelCreating(modelBuilder);

@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RiskGuard.Core.Abstractions;
+using RiskGuard.Core.Contracts;
+using RiskGuard.Modules.Tenant.Application.Audit;
 using RiskGuard.Modules.Tenant.Domain;
 using RiskGuard.Modules.Tenant.Persistence;
 
@@ -21,6 +23,7 @@ internal sealed class UpsertPlatformConnectionCommandHandler(
     TenantDbContext db,
     ITenantContext tenantContext,
     ISecretProtector protector,
+    IActorContext actor,
     TimeProvider timeProvider) : IRequestHandler<UpsertPlatformConnectionCommand, Result<PlatformConnectionDto>>
 {
     private const int MaxSecretLength = 1000;
@@ -78,6 +81,11 @@ internal sealed class UpsertPlatformConnectionCommandHandler(
             connection = existing;
         }
 
+        // Sem segredos no rastro: so a plataforma, a loja (identificador publico) e se houve token de acesso.
+        AuditTrail.Record(
+            db, actor, timeProvider, tenantId, AuditActions.ConnectionUpserted, platform,
+            $"{(existing is null ? "criada" : "substituida")}; loja {accountId}; token de acesso {(accessToken is null ? "ausente" : "informado")}");
+
         try
         {
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -93,14 +101,17 @@ internal sealed class UpsertPlatformConnectionCommandHandler(
 
 public sealed record RemovePlatformConnectionCommand(string Platform) : ICommand<Result>;
 
-internal sealed class RemovePlatformConnectionCommandHandler(TenantDbContext db, ITenantContext tenantContext)
-    : IRequestHandler<RemovePlatformConnectionCommand, Result>
+internal sealed class RemovePlatformConnectionCommandHandler(
+    TenantDbContext db,
+    ITenantContext tenantContext,
+    IActorContext actor,
+    TimeProvider timeProvider) : IRequestHandler<RemovePlatformConnectionCommand, Result>
 {
     public async Task<Result> Handle(RemovePlatformConnectionCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!tenantContext.HasTenant)
+        if (tenantContext.TenantId is not { } tenantId)
         {
             return Result.Failure(new Error("auth.no_tenant", "Requisicao sem tenant.", ErrorType.Unauthorized));
         }
@@ -113,6 +124,7 @@ internal sealed class RemovePlatformConnectionCommandHandler(TenantDbContext db,
         }
 
         db.PlatformConnections.Remove(connection);
+        AuditTrail.Record(db, actor, timeProvider, tenantId, AuditActions.ConnectionRemoved, platform, $"loja {connection.AccountId}");
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
     }

@@ -147,6 +147,13 @@ public sealed class RetentionOptions
     [Range(1, 3650)]
     public int RawPayloadDays { get; init; } = 30;
 
+    /// <summary>
+    /// Dias de guarda da trilha de auditoria. O minimo (180) tambem e imposto pelo banco: a policy de DELETE so enxerga eventos
+    /// mais antigos que isso, entao nem um bug na aplicacao apaga auditoria recente.
+    /// </summary>
+    [Range(180, 3650)]
+    public int AuditDays { get; init; } = 365;
+
     /// <summary>Cron (UTC) da limpeza.</summary>
     [Required]
     public string Cron { get; init; } = "0 3 * * *";

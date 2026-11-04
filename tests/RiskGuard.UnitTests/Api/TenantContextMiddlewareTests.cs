@@ -8,6 +8,7 @@ namespace RiskGuard.UnitTests.Api;
 public class TenantContextMiddlewareTests
 {
     private readonly ITenantContextSetter _setter = Substitute.For<ITenantContextSetter>();
+    private readonly IActorContextSetter _actor = Substitute.For<IActorContextSetter>();
 
     [Fact]
     public async Task Authenticated_user_with_tenant_claim_sets_the_tenant()
@@ -18,6 +19,30 @@ public class TenantContextMiddlewareTests
 
         nextCalled.Should().BeTrue();
         _setter.Received(1).SetTenant(tenantId);
+    }
+
+    [Fact]
+    public async Task The_sub_claim_becomes_the_actor_of_the_scope()
+    {
+        await Run(Principal(authenticated: true, (RiskGuardClaims.TenantId, Guid.NewGuid().ToString()), ("sub", "auth0|abc")));
+
+        _actor.Received(1).SetActor("auth0|abc");
+    }
+
+    [Fact]
+    public async Task Without_a_sub_claim_no_actor_is_set()
+    {
+        await Run(Principal(authenticated: true, (RiskGuardClaims.TenantId, Guid.NewGuid().ToString())));
+
+        _actor.DidNotReceiveWithAnyArgs().SetActor(default!);
+    }
+
+    [Fact]
+    public async Task An_invalid_tenant_claim_never_sets_the_actor()
+    {
+        await Run(Principal(authenticated: true, (RiskGuardClaims.TenantId, "not-a-guid"), ("sub", "auth0|abc")));
+
+        _actor.DidNotReceiveWithAnyArgs().SetActor(default!);
     }
 
     [Theory]
@@ -44,7 +69,7 @@ public class TenantContextMiddlewareTests
             return Task.CompletedTask;
         });
 
-        await middleware.InvokeAsync(new DefaultHttpContext { User = user }, _setter);
+        await middleware.InvokeAsync(new DefaultHttpContext { User = user }, _setter, _actor);
         return called;
     }
 

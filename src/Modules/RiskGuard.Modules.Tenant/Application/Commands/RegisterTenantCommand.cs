@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using RiskGuard.Core.Abstractions;
+using RiskGuard.Core.Contracts;
+using RiskGuard.Modules.Tenant.Application.Audit;
 using RiskGuard.Modules.Tenant.Domain;
 using RiskGuard.Modules.Tenant.Persistence;
 
@@ -24,6 +26,7 @@ internal sealed partial class RegisterTenantCommandHandler(
     TenantDbContext db,
     IIdentityProvider identityProvider,
     ITenantContextSetter tenantContextSetter,
+    IActorContext actor,
     TimeProvider timeProvider,
     ILogger<RegisterTenantCommandHandler> logger) : IRequestHandler<RegisterTenantCommand, Result<RegisteredTenant>>
 {
@@ -66,6 +69,7 @@ internal sealed partial class RegisterTenantCommandHandler(
         db.Tenants.Add(tenant);
         db.Settings.Add(TenantSettings.CreateDefault(tenant.Id));
         db.TenantUsers.Add(TenantUser.CreateOwner(tenant.Id, user.ExternalId, tenant.Email, now));
+        AuditTrail.Record(db, actor, timeProvider, tenant.Id, AuditActions.TenantRegistered, "tenant");
 
         try
         {

@@ -119,6 +119,7 @@ app.MapRiskEndpoints();
 app.MapTenantManagementEndpoints();
 app.MapActionEndpoints();
 app.MapPrivacyEndpoints();
+app.MapAuditEndpoints();
 
 await app.RunAsync();
 return 0;

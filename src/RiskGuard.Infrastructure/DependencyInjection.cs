@@ -39,6 +39,8 @@ public static class DependencyInjection
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
         services.AddScoped<ITenantContextSetter>(sp => sp.GetRequiredService<TenantContext>());
+        services.AddScoped<IActorContext>(sp => sp.GetRequiredService<TenantContext>());
+        services.AddScoped<IActorContextSetter>(sp => sp.GetRequiredService<TenantContext>());
         services.AddIdentity(configuration);
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
         services.AddPlatformHttpClients();

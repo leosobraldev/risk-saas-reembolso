@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using RiskGuard.Core.Abstractions;
+using RiskGuard.Core.Contracts;
 using RiskGuard.Modules.Action.Domain;
 using RiskGuard.Modules.Action.Jobs;
 using RiskGuard.Modules.Action.Persistence;
@@ -81,6 +82,7 @@ public sealed record RequestOrderActionReleaseCommand(Guid ActionId) : ICommand<
 internal sealed class RequestOrderActionReleaseCommandHandler(
     ActionDbContext db,
     ITenantContext tenantContext,
+    ISender sender,
     IBackgroundJobScheduler scheduler) : IRequestHandler<RequestOrderActionReleaseCommand, Result<OrderActionDto>>
 {
     public async Task<Result<OrderActionDto>> Handle(RequestOrderActionReleaseCommand request, CancellationToken cancellationToken)
@@ -112,6 +114,15 @@ internal sealed class RequestOrderActionReleaseCommandHandler(
                 return OrderActionDto.From(action); // pedido repetido: nao enfileira outro job
 
             default:
+                // Registra ANTES de efetivar: se a auditoria falhar, nada foi liberado nem enfileirado.
+                var audited = await sender.Send(
+                    new RecordAuditEventCommand(tenantId, AuditActions.ActionReleaseRequested, action.Id.ToString(), $"{action.Platform}; pedido {action.ExternalOrderId}"),
+                    cancellationToken).ConfigureAwait(false);
+                if (!audited.IsSuccess)
+                {
+                    return audited.Error;
+                }
+
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 var actionId = action.Id;
                 scheduler.Enqueue<ExecuteOrderActionJob>(job => job.RunAsync(tenantId, actionId));

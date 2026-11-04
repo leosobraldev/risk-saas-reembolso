@@ -3,9 +3,17 @@ using RiskGuard.Core.Abstractions;
 namespace RiskGuard.Infrastructure.Tenancy;
 
 /// <summary>Tenant corrente (escopo da requisicao ou do job).</summary>
-public sealed class TenantContext : ITenantContext, ITenantContextSetter
+public sealed class TenantContext : ITenantContext, ITenantContextSetter, IActorContext, IActorContextSetter
 {
     public Guid? TenantId { get; private set; }
+
+    public string? ActorId { get; private set; }
+
+    public void SetActor(string actorId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ActorId = actorId;
+    }
 
     public void SetTenant(Guid tenantId)
     {

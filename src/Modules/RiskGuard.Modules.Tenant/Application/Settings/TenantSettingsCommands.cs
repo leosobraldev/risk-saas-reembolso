@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RiskGuard.Core.Abstractions;
+using RiskGuard.Core.Contracts;
+using RiskGuard.Modules.Tenant.Application.Audit;
 using RiskGuard.Modules.Tenant.Application.Queries;
 using RiskGuard.Modules.Tenant.Persistence;
 using StackExchange.Redis;
@@ -36,6 +38,8 @@ public sealed record UpdateTenantSettingsCommand(int HighRiskThreshold, bool Aut
 internal sealed class UpdateTenantSettingsCommandHandler(
     TenantDbContext db,
     ITenantContext tenantContext,
+    IActorContext actor,
+    TimeProvider timeProvider,
     TenantSnapshotInvalidator invalidator) : IRequestHandler<UpdateTenantSettingsCommand, Result<TenantSettingsDto>>
 {
     public async Task<Result<TenantSettingsDto>> Handle(UpdateTenantSettingsCommand request, CancellationToken cancellationToken)
@@ -53,12 +57,17 @@ internal sealed class UpdateTenantSettingsCommandHandler(
             return new Error("tenant.settings_not_found", "Configuracoes do lojista nao encontradas.", ErrorType.NotFound);
         }
 
+        var (oldThreshold, oldAutoBlock) = (settings.HighRiskThreshold, settings.AutoBlockEnabled);
         var updated = settings.Update(request.HighRiskThreshold, request.AutoBlockEnabled);
         if (!updated.IsSuccess)
         {
             return updated.Error;
         }
 
+        // Mesma transacao da mudanca: nao existe alteracao de configuracao sem rastro.
+        AuditTrail.Record(
+            db, actor, timeProvider, tenantId, AuditActions.SettingsUpdated, "settings",
+            $"limite {oldThreshold} -> {settings.HighRiskThreshold}; bloqueio automatico {(oldAutoBlock ? "ligado" : "desligado")} -> {(settings.AutoBlockEnabled ? "ligado" : "desligado")}");
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Depois do commit: quem recarregar o cache a partir daqui le o valor novo.
@@ -76,6 +85,8 @@ internal sealed partial class DeactivateTenantCommandHandler(
     TenantSnapshotInvalidator invalidator,
     IIdentityProvider identityProvider,
     ITenantContextSetter tenantContext,
+    IActorContext actor,
+    TimeProvider timeProvider,
     ILogger<DeactivateTenantCommandHandler> logger) : IRequestHandler<DeactivateTenantCommand, Result>
 {
     private readonly ILogger<DeactivateTenantCommandHandler> _logger = logger;
@@ -84,6 +95,8 @@ internal sealed partial class DeactivateTenantCommandHandler(
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // O tenant do escopo precisa estar definido ANTES da primeira conexao (a RLS da auditoria e dos usuarios o exige).
+        tenantContext.SetTenant(request.TenantId);
         var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken).ConfigureAwait(false);
         if (tenant is null)
         {
@@ -91,13 +104,13 @@ internal sealed partial class DeactivateTenantCommandHandler(
         }
 
         tenant.Deactivate();
+        AuditTrail.Record(db, actor, timeProvider, tenant.Id, AuditActions.TenantDeactivated, "tenant");
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Efeito imediato na API: o snapshot sai do cache e o middleware de tenant ativo passa a recusar os tokens ja emitidos.
         await invalidator.InvalidateAsync(tenant.Id, cancellationToken).ConfigureAwait(false);
 
         // Alem disso, o provedor passa a negar novos logins e renovacoes. Melhor esforco: a API ja esta protegida pelo passo acima.
-        tenantContext.SetTenant(tenant.Id);
         var userIds = await db.TenantUsers.AsNoTracking().Select(u => u.ExternalUserId).ToListAsync(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds)
         {

@@ -21,5 +21,9 @@ public sealed class TenantModule : IModule
 
         services.AddModuleDbContext<TenantDbContext>(TenantDbContext.SchemaName);
         services.AddScoped<Application.Settings.TenantSnapshotInvalidator>();
+
+        // Retencao da trilha de auditoria: limpeza recorrente.
+        services.AddScoped<Application.Audit.PurgeExpiredAuditEventsJob>();
+        services.AddHostedService<Application.Audit.AuditRetentionJobRegistrar>();
     }
 }

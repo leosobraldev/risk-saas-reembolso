@@ -1,9 +1,11 @@
 # Documento de Especificação (SDD)
 
 **Projeto:** RiskGuard - SaaS de Prevenção de Risco de Reembolso B2B
-**Versão:** 1.4.0
+**Versão:** 1.5.0
 
-> **Histórico:** 1.4.0 — **identidade delegada a um provedor OIDC (Auth0)**: o RiskGuard deixa de guardar senhas, emitir tokens e implementar login, MFA, renovação de sessão e trava de login (ver 4.6). Os trechos afetados estão marcados com **[1.4.0]**.
+> **Histórico:** 1.5.0 — **trilha de auditoria** de segurança e de negócio por lojista (seção 4.7): quem mudou configurações, conexões, pediu anonimização, liberou pedido ou desativou o lojista; imutável no banco, isolada por RLS, com consulta pela API e retenção. Marcado com **[1.5.0]**.
+>
+> 1.4.0 — **identidade delegada a um provedor OIDC (Auth0)**: o RiskGuard deixa de guardar senhas, emitir tokens e implementar login, MFA, renovação de sessão e trava de login (ver 4.6). Os trechos afetados estão marcados com **[1.4.0]**.
 >
 > 1.3.0 — endurecimento de segurança (seção 4.4 e 4.5): borda HTTP, privilégio mínimo no banco, trava de login por conta, dependências auditadas e privacidade de dados pessoais (retenção e anonimização). As decisões estão marcadas com **[1.3.0]**.
 >
@@ -125,6 +127,22 @@ O RiskGuard é uma plataforma Multi-Tenant que visa proteger e-commerces contra 
 
 * **Transparência de decisões automatizadas:** cada avaliação guarda os fatores e motivos do score, e o lojista pode liberar pedidos bloqueados (RF08).
 
+### 4.7. Trilha de Auditoria [1.5.0]
+
+* **O que é registrado:** ações que mudam o comportamento do sistema ou exercem direitos. Cada evento guarda **quem** (`ActorId` = `sub` do token; `system` para CLI, jobs e operações administrativas), **o quê** (`Action`), **em quê** (`Target`), um texto curto de **detalhes** e **quando**. Ações cobertas (nomes estáveis, contrato com quem consulta): `tenant.registered`, `tenant.deactivated`, `settings.updated` (limite e bloqueio automático, de → para), `connection.upserted` e `connection.removed` (plataforma, loja e se há token de acesso), `privacy.anonymization_requested` e `action.release_requested` (id da ação e do pedido).
+
+* **O que nunca entra:** segredos (webhook, token de acesso), e-mail ou qualquer dado pessoal de comprador. Os detalhes são texto escrito pelo código, não eco do que o cliente enviou; textos longos são cortados em vez de derrubar a operação.
+
+* **Sem mudança sem rastro:** dentro do módulo Tenant o evento vai na **mesma transação** da mudança. Nos outros módulos (liberação de pedido) e na anonimização, o evento é gravado **antes** de efetivar o efeito: se a auditoria falhar, a operação falha e nada acontece. Operação rejeitada (validação, não encontrado) não gera evento. Os módulos pedem o registro pelo contrato do Core (`RecordAuditEventCommand`); quem guarda é o Tenant (`tenant.AuditEvents`).
+
+* **Imutável e isolada no banco:** o papel da aplicação só tem `SELECT`, `INSERT` e `DELETE`, nunca `UPDATE` nem `TRUNCATE`. A RLS tem uma policy por comando: ler e inserir só no próprio lojista (sem `app.current_tenant` não há acesso) e **apagar só eventos com mais de 180 dias**. Mesmo um bug ou uma credencial da API comprometida não reescreve a história nem apaga auditoria recente.
+
+* **Consulta:** `GET /api/v1/audit-events` (paginado, mais recente primeiro, filtro `action`). Não existe rota de escrita.
+
+* **Retenção:** job recorrente (mesmo `Retention:Cron`) apaga eventos mais antigos que `Retention:AuditDays` (365; mínimo 180, validado na subida e imposto pelo banco).
+
+* **Fora de escopo (decisão):** autenticação (login, falha de login, MFA) fica nos logs do provedor de identidade (4.6); tentativas negadas e erros ficam nos logs da aplicação. A trilha cobre o que o lojista fez dentro do RiskGuard.
+
 ## 5. Estratégia de Qualidade e CI/CD (DevOps)
 
 Para garantir a estabilidade do SaaS B2B, o sistema deve incorporar práticas estritas de validação contínua.
@@ -207,6 +225,8 @@ Criar `.github/workflows/ci.yml`. O pipeline deve rodar em *Pull Requests* para 
 
 * `Tenants` (Id, Name, IsActive, CreatedAt, ➕ Email \[único, minúsculo; contato do dono\]) — diretório de lojistas, sem RLS. **[1.4.0]** Não há senha nem hash: credenciais vivem no provedor de identidade.
 
+* ➕ `AuditEvents` (Id, TenantId, OccurredAt, ActorId, Action, Target, Details; índice por TenantId+OccurredAt) **[1.5.0]** — trilha imutável com RLS (ver 4.7).
+
 * ➕ `TenantUsers` (Id, TenantId, ExternalUserId \[único; `sub` do provedor\], Email, Role \[Owner\], CreatedAt) **[1.4.0]** — vínculo usuário do provedor ↔ lojista; permite vários usuários por lojista.
 
 * `TenantSettings` (TenantId, HighRiskThreshold, AutoBlockEnabled)
@@ -248,6 +268,7 @@ Criar `.github/workflows/ci.yml`. O pipeline deve rodar em *Pull Requests* para 
 | DELETE | `/api/v1/tenants/me/connections/{platform}` ➕ | Desconecta a plataforma |
 | GET | `/api/v1/actions` ➕ | Lista as ações preventivas (paginado; filtro `status`) |
 | POST | `/api/v1/actions/{id}/release` ➕ | Libera um pedido bloqueado/sinalizado (assíncrono: 202) |
+| GET | `/api/v1/audit-events` ➕ **[1.5.0]** | Trilha de auditoria do lojista (paginado, mais recente primeiro; filtro `action`) |
 | POST | `/api/v1/privacy/customers/anonymize` ➕ | Elimina os dados de um comprador (LGPD): body `{ "email": "..." }`, 204, idempotente |
 | GET | `/health/live`, `/health/ready` ➕ | Saúde da aplicação, do PostgreSQL e do Redis |
 

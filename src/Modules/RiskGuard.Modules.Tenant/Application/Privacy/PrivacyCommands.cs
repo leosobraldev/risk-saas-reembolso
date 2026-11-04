@@ -23,6 +23,7 @@ public sealed record AnonymizeCustomerCommand(string? Email) : ICommand<Result>;
 
 internal sealed partial class AnonymizeCustomerCommandHandler(
     IPublisher publisher,
+    ISender sender,
     ITenantContext tenantContext,
     ILogger<AnonymizeCustomerCommandHandler> logger) : IRequestHandler<AnonymizeCustomerCommand, Result>
 {
@@ -40,6 +41,14 @@ internal sealed partial class AnonymizeCustomerCommandHandler(
         if (!EmailRules.IsValid(request.Email))
         {
             return Result.Failure(new Error("privacy.invalid_email", "Informe um e-mail valido.", ErrorType.Validation));
+        }
+
+        // Registra ANTES de agir (falha ao auditar = nada foi anonimizado). O e-mail nao entra no rastro: e o dado a eliminar.
+        var audited = await sender.Send(
+            new RecordAuditEventCommand(tenantId, AuditActions.CustomerAnonymizationRequested, "customer"), cancellationToken).ConfigureAwait(false);
+        if (!audited.IsSuccess)
+        {
+            return audited;
         }
 
         await publisher.Publish(new CustomerAnonymizationRequested(tenantId, EmailRules.Normalize(request.Email)), cancellationToken).ConfigureAwait(false);
