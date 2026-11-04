@@ -9,3 +9,7 @@ node_modules/
 .env
 appsettings.Production.json
 .claude/
+dist/
+.env.local
+.env.*.local
+.impeccable/review/

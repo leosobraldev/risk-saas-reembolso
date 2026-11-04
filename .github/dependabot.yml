@@ -14,3 +14,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # Frontend: minor e patch juntos numa unica PR por semana; major continua em PR propria (revisao do changelog).
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]

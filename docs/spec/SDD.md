@@ -1,9 +1,11 @@
 # Documento de Especificação (SDD)
 
 **Projeto:** RiskGuard - SaaS de Prevenção de Risco de Reembolso B2B
-**Versão:** 1.5.0
+**Versão:** 1.6.0
 
-> **Histórico:** 1.5.0 — **trilha de auditoria** de segurança e de negócio por lojista (seção 4.7): quem mudou configurações, conexões, pediu anonimização, liberou pedido ou desativou o lojista; imutável no banco, isolada por RLS, com consulta pela API e retenção. Marcado com **[1.5.0]**.
+> **Histórico:** 1.6.0 — **Fase 6 (frontend)** implementada em `/frontend` (Vite + React): painel do lojista com Pedidos, Ações, Configurações e Auditoria, login pelo Auth0 (ver 4.6 e `docs/auth0-setup.md`, seção 8.1). Marcado com **[1.6.0]**.
+>
+> 1.5.0 — **trilha de auditoria** de segurança e de negócio por lojista (seção 4.7): quem mudou configurações, conexões, pediu anonimização, liberou pedido ou desativou o lojista; imutável no banco, isolada por RLS, com consulta pela API e retenção. Marcado com **[1.5.0]**.
 >
 > 1.4.0 — **identidade delegada a um provedor OIDC (Auth0)**: o RiskGuard deixa de guardar senhas, emitir tokens e implementar login, MFA, renovação de sessão e trava de login (ver 4.6). Os trechos afetados estão marcados com **[1.4.0]**.
 >
@@ -299,3 +301,4 @@ Na pasta `/frontend`, crie a aplicação web utilizando Next.js (App Router) ou 
 - Crie uma tela de Autenticação (Login) protegida.
   > **[1.4.0]** O login não é implementado no RiskGuard: o frontend usa o SDK do provedor (Auth0) com *Authorization Code + PKCE* e envia o token de acesso à API. Ver `docs/auth0-setup.md`.
 - Crie o Dashboard Principal exibindo as métricas principais e uma Tabela de Pedidos baseada no endpoint `/api/v1/risk/evaluations`, utilizando "badges" coloridos (Verde, Amarelo, Vermelho) para indicar visualmente o nível de risco (RiskLevel) de cada pedido.
+   > **[1.6.0] Estado:** implementada em `/frontend` (Vite + React + TypeScript, Tailwind v4, componentes no estilo shadcn/ui sobre Radix, React Query, React Router). O Dashboard principal (Pedidos) mostra o resumo por nível (totais lidos da API) e a tabela de `/api/v1/risk/evaluations` com badges Verde/Amarelo/Vermelho (sempre com o texto do nível), o score no trajeto com o limite do lojista e os fatores de cada pedido. Além do SDD: telas de **Ações** (liberação com confirmação), **Configurações** (limite, bloqueio automático, lojas conectadas, eliminação de dados de comprador) e **Auditoria** (`/api/v1/audit-events`). Testes com Vitest e Testing Library no CI (`frontend` job). Em aberto: hospedagem e domínio, e validação com o Auth0 real (o modo `npm run dev:demo` usa dados sintéticos).

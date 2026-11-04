@@ -109,6 +109,22 @@ O token de usuário vem do fluxo *Authorization Code + PKCE* (Universal Login). 
 Application** no Auth0 com callback `https://oauth.pstmn.io/v1/callback` e use o Postman (*OAuth 2.0 → Authorization Code with PKCE*,
 informando `audience`). Tokens de *Machine to Machine* **não** têm o claim de lojista e a API os recusa (403).
 
+## 8.1. Painel web (frontend)
+
+O painel em `frontend/` usa a mesma aplicação **Single Page Application** do Auth0 (ou uma só para ele; não reutilize a do Postman em produção).
+
+1. **Applications → Applications → Create Application → Single Page Web Applications.** Anote o *Domain* e o *Client ID* (são públicos, não há segredo).
+2. Em **Settings** da aplicação, preencha com a origem do painel (em desenvolvimento, `http://localhost:5173`; em produção, o domínio real):
+   - *Allowed Callback URLs*: a origem do painel.
+   - *Allowed Logout URLs*: a origem do painel.
+   - *Allowed Web Origins*: a origem do painel (permite a renovação silenciosa do token).
+3. Em **Advanced Settings → Grant Types**, deixe marcados *Authorization Code* e *Refresh Token*. Em **Refresh Token Rotation**, ligue *Rotation* (o painel guarda o token só em memória e usa o refresh token rotativo).
+4. Em **APIs → (a API do RiskGuard) → Settings**, ligue *Allow Offline Access* (necessário para o refresh token).
+5. Na API do RiskGuard, inclua a origem do painel em `Cors:AllowedOrigins` (ex.: `Cors__AllowedOrigins__0=http://localhost:5173`). Sem isso o navegador bloqueia as chamadas.
+6. No painel: `cp frontend/.env.example frontend/.env.local` e preencha `VITE_API_URL`, `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID` e `VITE_AUTH0_AUDIENCE` (o mesmo valor de `Identity:Audience`).
+
+A Action de login (seção 5) já coloca o lojista no token; o painel não faz nada a mais. Se o usuário não tiver `app_metadata.tenant_id`, a API devolve 403 e o painel mostra "Sua conta ainda não está vinculada a uma loja".
+
 ## 9. Se algo falhar
 
 | Sintoma | Causa provável |
@@ -117,6 +133,8 @@ informando `audience`). Tokens de *Machine to Machine* **não** têm o claim de 
 | `403` com token válido | A Action não está no fluxo de Login, ou o nome do claim difere de `Identity:TenantClaim`, ou o usuário não tem `app_metadata.tenant_id` |
 | `403 tenant.inactive` | O lojista foi desativado (ou o usuário é órfão: existe no Auth0 e não no RiskGuard) |
 | `503 identity.unavailable` ao cadastrar | Credenciais M2M erradas, escopos faltando ou Auth0 fora do ar |
+| Painel: erro de CORS no navegador | A origem do painel não está em `Cors:AllowedOrigins` da API |
+| Painel: volta ao login ao recarregar a página | O navegador bloqueia cookies de terceiros; com a sessão do Auth0 ativa o login é imediato. Confira *Allowed Web Origins* |
 | API não sobe | Veja a mensagem de validação de `Identity:*` no log de inicialização |
 
 ## O que é do RiskGuard e o que é do Auth0

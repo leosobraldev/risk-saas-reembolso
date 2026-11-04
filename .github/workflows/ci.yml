@@ -59,6 +59,41 @@ jobs:
           path: coverage/**
           if-no-files-found: warn
 
+  frontend:
+    name: Frontend (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # Falha com vulnerabilidade alta ou critica nas dependencias de producao.
+      - name: Audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # valores de exemplo: o build nao os valida; os reais entram no deploy
+          VITE_API_URL: https://api.example.test
+          VITE_AUTH0_DOMAIN: example.us.auth0.com
+          VITE_AUTH0_CLIENT_ID: ci
+          VITE_AUTH0_AUDIENCE: https://api.example.test
+
   docker-dry-run:
     name: Validate Docker builds
     runs-on: ubuntu-latest
@@ -77,4 +112,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # TODO(Fase frontend): adicionar o build do Dockerfile do frontend (Next.js) quando existir.
+      # O frontend e estatico (frontend/dist): o deploy e decisao em aberto (ver PRODUCT.md), por isso nao ha Dockerfile ainda.
