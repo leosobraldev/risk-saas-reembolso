@@ -1,0 +1,109 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-semi-condensed/500.css';
+@import '@fontsource/barlow-semi-condensed/600.css';
+
+/*
+ * Mundo visual: linhas do Metro. As tres cores de linha SO significam estado de risco
+ * (baixo = Verde, medio = Amarela, alto = Vermelha). Trilho de navegacao e a placa esmaltada azul-marinho.
+ */
+@theme {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-label: 'Barlow Semi Condensed', 'Barlow', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ground: #faf9f6;
+  --color-surface: #ffffff;
+  --color-sunken: #f1efe9;
+  --color-rule: #d9d5ca;
+  --color-rule-strong: #b9b3a4;
+  --color-ink: #14202b;
+  --color-ink-muted: #4f5b69;
+  --color-rail: #0b2a4a;
+  --color-rail-line: #27496d;
+  --color-rail-ink: #e8eef5;
+  --color-rail-muted: #a9bbcf;
+  --color-focus: #1b66c9;
+
+  --color-line-green: #007e5e;
+  --color-line-green-soft: #e3f3ee;
+  --color-line-yellow: #ffd100;
+  --color-line-yellow-soft: #fff6cc;
+  --color-line-red: #d71920;
+  --color-line-red-soft: #fdeaea;
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    background: var(--color-ground);
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* partes do navegador que nao desenhamos: selecao, foco, barra de rolagem */
+  ::selection {
+    background: var(--color-rail);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-color: var(--color-rule-strong) transparent;
+    scrollbar-width: thin;
+  }
+
+  input[type='number']::-webkit-inner-spin-button {
+    opacity: 1;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* o unico momento de movimento: a linha que muda de estado acende uma vez no lugar (sem reordenar a tabela) */
+@keyframes station-change {
+  from {
+    background-color: #e3ebf4;
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.station-change {
+  animation: station-change 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}

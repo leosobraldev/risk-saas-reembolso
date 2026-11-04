@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T00:00:00Z",
+  "title": "Design System: RiskGuard",
+  "extensions": {
+    "colorMeta": {
+      "rail": { "role": "primary", "displayName": "Placa Azul-Marinho", "canonical": "#0b2a4a", "tonalRamp": ["#05172b", "#0b2a4a", "#12406d", "#27496d", "#5b7a9c", "#a9bbcf", "#e3ebf4", "#f3f6fa"] },
+      "line-green": { "role": "secondary", "displayName": "Linha Verde", "canonical": "#007e5e", "tonalRamp": ["#00382a", "#005a43", "#007e5e", "#3a9f85", "#7fc0ae", "#b4dacf", "#e3f3ee", "#f3faf8"] },
+      "line-yellow": { "role": "secondary", "displayName": "Linha Amarela", "canonical": "#ffd100", "tonalRamp": ["#5c4b00", "#8f7500", "#c7a300", "#ffd100", "#ffdd47", "#ffe98a", "#fff6cc", "#fffbe6"] },
+      "line-red": { "role": "secondary", "displayName": "Linha Vermelha", "canonical": "#d71920", "tonalRamp": ["#5a0a0d", "#8e1015", "#d71920", "#e2545a", "#ec8a8e", "#f5b8ba", "#fdeaea", "#fef6f6"] },
+      "ground": { "role": "neutral", "displayName": "Chao Quente", "canonical": "#faf9f6", "tonalRamp": ["#14202b", "#4f5b69", "#b9b3a4", "#d9d5ca", "#f1efe9", "#f6f4ef", "#faf9f6", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "#14202b", "tonalRamp": ["#070c11", "#14202b", "#2d3a47", "#4f5b69", "#79838f", "#a5adb6", "#d0d4d9", "#eceef0"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Titulo de pagina", "purpose": "h1 de cada tela, Barlow 700 24px." },
+      "headline": { "displayName": "Destaque", "purpose": "Marca no trilho, titulo de dialogo, contagem do resumo, 18px 700." },
+      "body": { "displayName": "Corpo", "purpose": "Tabelas, campos, botoes; 14px, numeros tabulares." },
+      "label": { "displayName": "Rotulo de placa", "purpose": "Barlow Semi Condensed 600 12px caixa alta: cabecalhos de coluna, selos, rotulos do resumo." }
+    },
+    "shadows": [
+      { "name": "dialog", "value": "shadow-lg (Tailwind)", "purpose": "Unica elevacao: dialogo de confirmacao sobre overlay azul-marinho a 60%." },
+      { "name": "switch-thumb", "value": "shadow-sm (Tailwind) + ring 1px rule-strong", "purpose": "Polegar do interruptor." }
+    ],
+    "motion": [
+      { "name": "station-change", "value": "1.6s cubic-bezier(0.16, 1, 0.3, 1) 1x, rail-tint para transparente", "purpose": "A linha que muda de estado acende uma vez no lugar." },
+      { "name": "reduced-motion", "value": "animation/transition 0.01ms", "purpose": "Respeita prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acao primaria em azul-marinho.",
+      "html": "<button class=\"ds-btn-primary\">Liberar pedido</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border: 1px solid #0b2a4a; border-radius: 3px; background: #0b2a4a; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color .15s; } .ds-btn-primary:hover { background: #12406d; } .ds-btn-primary:focus-visible { outline: 2px solid #1b66c9; outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acao secundaria: cancelar, tentar de novo.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 1px solid #b9b3a4; border-radius: 3px; background: #fff; color: #14202b; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-btn-outline:hover { background: #f1efe9; } .ds-btn-outline:focus-visible { outline: 2px solid #1b66c9; outline-offset: 2px; }"
+    },
+    {
+      "name": "Select Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo e select nativo, 36px.",
+      "html": "<select class=\"ds-input\"><option>Todos os niveis</option></select>",
+      "css": ".ds-input { height: 36px; width: 192px; padding: 0 32px 0 12px; border: 1px solid #b9b3a4; border-radius: 3px; background: #fff; color: #14202b; font-size: 14px; } .ds-input:focus-visible { outline: 2px solid #1b66c9; outline-offset: 2px; } .ds-input[aria-invalid=true] { border: 2px solid #14202b; }"
+    },
+    {
+      "name": "Risk Badge",
+      "kind": "chip",
+      "refersTo": "risk-badge-high",
+      "description": "Selo de risco: cor da linha, texto e simbolo.",
+      "html": "<span class=\"ds-badge\"><svg viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 3l10 10M13 3L3 13\"/></svg>RISCO ALTO</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 2px; background: #d71920; color: #fff; font-family: 'Barlow Semi Condensed', Barlow, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .025em; white-space: nowrap; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge-succeeded",
+      "description": "Situacao da acao: azul-marinho e tinta, nunca cores de linha.",
+      "html": "<span class=\"ds-status\"><svg viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 8.5l3.5 3.5L13 5\"/></svg>LIBERADO</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid #0b2a4a; border-radius: 2px; background: #fff; color: #0b2a4a; font-family: 'Barlow Semi Condensed', Barlow, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .025em; white-space: nowrap; }"
+    },
+    {
+      "name": "Navigation Rail",
+      "kind": "nav",
+      "refersTo": "nav-rail",
+      "description": "Trilho azul-marinho com estacoes: anel vazio, pagina atual preenchida.",
+      "html": "<nav class=\"ds-rail\"><span class=\"ds-rail-line\"></span><a class=\"ds-rail-item ds-active\">Pedidos</a><a class=\"ds-rail-item\">Acoes</a><a class=\"ds-rail-item\">Auditoria</a></nav>",
+      "css": ".ds-rail { position: relative; width: 220px; padding: 20px 16px; background: #0b2a4a; color: #e8eef5; } .ds-rail-line { position: absolute; left: 26px; top: 20px; bottom: 16px; width: 2px; background: #27496d; } .ds-rail-item { position: relative; display: flex; align-items: center; height: 44px; padding-left: 32px; font-size: 14px; font-weight: 600; } .ds-rail-item::before { content: ''; position: absolute; left: 7px; top: 50%; width: 14px; height: 14px; transform: translateY(-50%); border: 2px solid #fff; border-radius: 9999px; background: #0b2a4a; box-sizing: border-box; } .ds-rail-item.ds-active { color: #fff; } .ds-rail-item.ds-active::before { background: #fff; } .ds-rail-item:hover { color: #fff; }"
+    },
+    {
+      "name": "Risk Track",
+      "kind": "custom",
+      "refersTo": "risk-badge-high",
+      "description": "Score como estacao num trajeto 0-100, com tique no limite do lojista e trecho vermelho acima dele.",
+      "html": "<svg class=\"ds-track\" viewBox=\"0 0 120 24\" role=\"img\" aria-label=\"Score 72 de 100. Limite de risco alto: 70.\"><line x1=\"6\" x2=\"81.6\" y1=\"12\" y2=\"12\" stroke=\"#b9b3a4\" stroke-width=\"3\" stroke-linecap=\"round\"/><line x1=\"81.6\" x2=\"114\" y1=\"12\" y2=\"12\" stroke=\"#d71920\" stroke-width=\"3\" stroke-linecap=\"round\"/><line x1=\"81.6\" x2=\"81.6\" y1=\"2\" y2=\"22\" stroke=\"#14202b\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"83.8\" cy=\"12\" r=\"5.5\" fill=\"#d71920\" stroke=\"#14202b\" stroke-width=\"1.75\"/></svg>",
+      "css": ".ds-track { width: 120px; height: auto; }"
+    },
+    {
+      "name": "Line Summary",
+      "kind": "card",
+      "refersTo": "risk-badge-low",
+      "description": "Tres estacoes (Verde, Amarela, Vermelha) com contagens, ligadas por um trilho; filtram a tabela.",
+      "html": "<section class=\"ds-summary\"><div class=\"ds-stations\"><span class=\"ds-bar\"><i style=\"background:#007e5e\"></i><i style=\"background:#ffd100\"></i><i style=\"background:#d71920\"></i></span><button class=\"ds-station\"><span class=\"ds-dot\" style=\"background:#007e5e\"></span><span class=\"ds-lbl\">RISCO BAIXO</span><b>128</b></button><button class=\"ds-station\"><span class=\"ds-dot\" style=\"background:#ffd100\"></span><span class=\"ds-lbl\">RISCO MEDIO</span><b>34</b></button><button class=\"ds-station\"><span class=\"ds-dot\" style=\"background:#d71920\"></span><span class=\"ds-lbl\">RISCO ALTO</span><b>9</b></button></div></section>",
+      "css": ".ds-summary { padding: 12px 16px; border: 1px solid #d9d5ca; border-radius: 4px; background: #fff; } .ds-stations { position: relative; display: inline-flex; gap: 8px; } .ds-bar { position: absolute; left: 32px; right: 32px; top: 18px; display: flex; height: 4px; } .ds-bar i { flex: 1; } .ds-station { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 112px; padding: 8px 12px; border: 0; border-radius: 3px; background: transparent; color: #14202b; cursor: pointer; } .ds-station:hover { background: #f1efe9; } .ds-dot { width: 16px; height: 16px; border: 2px solid #14202b; border-radius: 9999px; box-sizing: border-box; } .ds-lbl { font-family: 'Barlow Semi Condensed', Barlow, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: .025em; color: #4f5b69; } .ds-station b { font-size: 18px; line-height: 1; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "As Linhas do Metro",
+    "overview": "O risco e uma linha de metro. Os tres niveis sao as linhas Verde (baixo), Amarela (medio) e Vermelha (alto); o score de cada pedido e uma estacao ao longo de um trajeto de 0 a 100, e o limite do lojista e a estacao de conexao. O chao e branco quente, a navegacao e a placa esmaltada azul-marinho da estacao, e tudo o mais e tinta sobre papel: linhas finas e uniformes, cantos de 2 a 4px, cor chapada sem gradiente.\n\nA densidade e de painel de uso diario: tabela compacta, rotulos de estado em caixa de placa, numeros tabulares. Peso e caixa carregam a hierarquia, nao tamanho nem acento. A interface e desktop primeiro; no celular o trilho vira uma faixa horizontal e colunas secundarias somem.",
+    "keyCharacteristics": [
+      "Tres cores de linha que so significam risco; todo o resto e azul-marinho e tinta.",
+      "Cor nunca e o unico sinal: texto do nivel mais simbolo de forma diferente (traco, mais, x).",
+      "Plano por padrao: sem sombra decorativa, sem gradiente, bordas de 1px.",
+      "Grotesca de sinalizacao (Barlow) com Barlow Semi Condensed em caixa alta para rotulos.",
+      "Unico movimento: a linha que muda de estado acende uma vez no lugar."
+    ],
+    "rules": [
+      { "name": "The Linhas So Dizem Risco Rule", "body": "Verde, amarelo e vermelho aparecem apenas para nivel de risco (selo, estacao do resumo, trajeto, marca). Situacao de acao e erro usam azul-marinho e tinta com simbolo e texto; falha e contorno de 2px em tinta, nunca vermelho.", "section": "colors" },
+      { "name": "The Texto Escuro no Amarelo Rule", "body": "Sobre #ffd100 o texto e sempre ink.", "section": "colors" },
+      { "name": "The Cor Nao Basta Rule", "body": "Todo estado colorido leva texto e um simbolo de forma propria.", "section": "colors" },
+      { "name": "The Peso Carrega Rule", "body": "Hierarquia por peso (400, 600, 700) e caixa do rotulo; a escala de tamanhos e curta (12, 14, 18, 24).", "section": "typography" },
+      { "name": "The Chao Plano Rule", "body": "Superficies em repouso nao tem sombra; sombra so onde algo flutua sobre a pagina (dialogo) ou e peca movel (polegar).", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar verde, amarelo e vermelho apenas para o nivel de risco, sempre com texto e simbolo.",
+      "Do usar azul-marinho (#0b2a4a) e tinta para acao, situacao e erro; falha se distingue por contorno de 2px.",
+      "Do manter cantos de 2 a 4px, bordas de 1px e superficies planas.",
+      "Do usar Barlow Semi Condensed 600 em caixa alta, 12px, para rotulos de estado e cabecalhos de coluna.",
+      "Do manter numeros tabulares e identificar o limite do lojista no trajeto (tique e aria-label).",
+      "Do usar a marca da placa (anel mais trecho de linha de 2px em azul-marinho) apenas no topo de PageHeader."
+    ],
+    "donts": [
+      "Don't usar as cores de linha para decoracao, destaque de marca ou estado de acao.",
+      "Don't montar o painel como cartoes de metricas com numero grande e acento; o resumo e um trajeto de estacoes.",
+      "Don't usar gradiente, sombra decorativa ou cantos arredondados acima de 4px (exceto estacoes e interruptor).",
+      "Don't escrever texto claro sobre o amarelo #ffd100.",
+      "Don't depender so da cor para indicar nivel ou situacao."
+    ]
+  }
+}
