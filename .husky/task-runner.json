@@ -1,0 +1,17 @@
+{
+  "$schema": "https://alirezanet.github.io/Husky.Net/schema.json",
+  "tasks": [
+    {
+      "name": "dotnet-format-verify",
+      "group": "pre-commit",
+      "command": "dotnet",
+      "args": ["format", "RiskGuard.sln", "--verify-no-changes", "--no-restore"]
+    },
+    {
+      "name": "unit-tests",
+      "group": "pre-commit",
+      "command": "dotnet",
+      "args": ["test", "tests/RiskGuard.UnitTests", "--nologo", "--verbosity", "quiet"]
+    }
+  ]
+}

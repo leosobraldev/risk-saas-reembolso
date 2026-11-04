@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build, analyze & test
+    runs-on: ubuntu-latest # Docker ja disponivel: necessario para Testcontainers
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore RiskGuard.sln
+
+      # Falha se QUALQUER pacote (inclusive transitivo) tiver vulnerabilidade conhecida. O NuGetAudit do build tambem barra.
+      - name: Vulnerable packages
+        shell: bash
+        run: |
+          dotnet list RiskGuard.sln package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -qE '^\s+>' vulnerable.txt; then echo '::error::Pacotes vulneraveis encontrados'; exit 1; fi
+
+      - name: Format & static analysis check
+        run: dotnet format RiskGuard.sln --verify-no-changes --no-restore
+
+      - name: Build (warnings as errors)
+        run: dotnet build RiskGuard.sln --no-restore --configuration Release
+
+      - name: Test (unit + integration) with coverage
+        run: >
+          dotnet test RiskGuard.sln --no-build --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
+          --logger "trx;LogFileName=results.trx"
+
+      # SDD 5.1: cobertura minima de 90% no RiskModule (unitarios + integracao mesclados). Reexecuta os testes.
+      - name: Coverage gate (RiskModule >= 90%)
+        shell: pwsh
+        run: ./scripts/Test-RiskCoverage.ps1 -Threshold 90
+
+      - name: Upload test results & coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: coverage/**
+          if-no-files-found: warn
+
+  docker-dry-run:
+    name: Validate Docker builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # TODO(Fase frontend): adicionar o build do Dockerfile do frontend (Next.js) quando existir.

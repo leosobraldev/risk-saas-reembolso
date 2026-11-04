@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>riskguard-api</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RiskGuard.Core\RiskGuard.Core.csproj" />
+    <ProjectReference Include="..\RiskGuard.Infrastructure\RiskGuard.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\RiskGuard.Modules.Tenant\RiskGuard.Modules.Tenant.csproj" />
+    <ProjectReference Include="..\Modules\RiskGuard.Modules.Ingestion\RiskGuard.Modules.Ingestion.csproj" />
+    <ProjectReference Include="..\Modules\RiskGuard.Modules.Risk\RiskGuard.Modules.Risk.csproj" />
+    <ProjectReference Include="..\Modules\RiskGuard.Modules.Action\RiskGuard.Modules.Action.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RiskGuard.UnitTests" />
+    <InternalsVisibleTo Include="RiskGuard.IntegrationTests" />
+  </ItemGroup>
+</Project>

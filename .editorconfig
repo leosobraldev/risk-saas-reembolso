@@ -1,0 +1,48 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,csproj,props,config}]
+indent_size = 2
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_prefer_primary_constructors = false:none
+
+# Decisoes conscientes (documentadas no review da Fase 0/1)
+dotnet_diagnostic.CA1062.severity = none        # null-checks cobertos por Nullable + ArgumentNullException nas bordas publicas
+dotnet_diagnostic.CA2007.severity = none        # ASP.NET Core nao tem SynchronizationContext; mantido apenas em Infrastructure por convencao
+dotnet_diagnostic.CA1848.severity = none        # preferimos [LoggerMessage] onde ha hot path; nao exigir em todo log
+dotnet_diagnostic.CA1303.severity = none        # sem localizacao de mensagens
+dotnet_diagnostic.CA1812.severity = none        # tipos instanciados por DI/EF
+dotnet_diagnostic.CA1002.severity = none
+dotnet_diagnostic.CA1000.severity = none        # Result<T>.Success/Failure (padrao Result)
+dotnet_diagnostic.CA2225.severity = none        # conversao implicita Error -> Result<T> e intencional
+dotnet_diagnostic.CA1040.severity = none        # interfaces marcadoras ICommand/IQuery (CQRS)
+dotnet_diagnostic.CA1030.severity = none        # Raise() de eventos de dominio nao e um evento .NET
+dotnet_diagnostic.CA1515.severity = none        # tipos publicos necessarios para WebApplicationFactory/xUnit
+dotnet_diagnostic.CA1716.severity = none        # namespace/tipo "Action" e termo de dominio (ActionModule)
+dotnet_diagnostic.CA1724.severity = none
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none        # nomes de teste com underscores
+dotnet_diagnostic.CA2000.severity = none
+dotnet_diagnostic.CA2100.severity = none        # SQL literal de testes
+dotnet_diagnostic.CA1034.severity = none        # tipos auxiliares aninhados nos testes
+dotnet_diagnostic.CA1822.severity = none        # jobs Hangfire precisam ser metodos de instancia
+dotnet_diagnostic.CA1711.severity = none        # [CollectionDefinition]
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA5394.severity = none
+
+[**/Migrations/*.cs]
+generated_code = true

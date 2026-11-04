@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+coverage/
+.idea/
+node_modules/
+.env
+appsettings.Production.json
+.claude/
