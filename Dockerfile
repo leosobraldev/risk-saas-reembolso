@@ -6,7 +6,7 @@ COPY src/ src/
 RUN dotnet restore src/RiskGuard.Api/RiskGuard.Api.csproj
 RUN dotnet publish src/RiskGuard.Api/RiskGuard.Api.csproj -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 USER $APP_UID
