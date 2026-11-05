@@ -1,4 +1,29 @@
-# Infra local de desenvolvimento. Credenciais abaixo valem apenas para a maquina do desenvolvedor.
+# Ambiente local COMPLETO com um comando: docker compose up -d --build
+#   postgres + redis  : infraestrutura
+#   migrate           : aplica as migrations (com a credencial administrativa) e termina; a API nunca recebe essa credencial
+#   api               : http://localhost:5080  (modo Production: painel do Hangfire negado)
+#   web               : http://localhost:5173  (painel)
+#
+# Segredos e dados do Auth0 vem do arquivo .env (NAO versionado). Modelo em .env.example.
+# Credenciais de banco abaixo valem apenas para a maquina do desenvolvedor.
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_URLS: http://+:8080
+  Postgres__ConnectionString: Host=postgres;Port=5432;Database=riskguard;Username=riskguard_app;Password=riskguard_app_dev
+  Postgres__JobsConnectionString: Host=postgres;Port=5432;Database=riskguard;Username=riskguard_jobs;Password=riskguard_jobs_dev
+  Redis__ConnectionString: redis:6379
+  Security__EncryptionKey: ${SECURITY_ENCRYPTION_KEY:?defina SECURITY_ENCRYPTION_KEY no .env}
+  Identity__Audience: ${IDENTITY_AUDIENCE:?defina IDENTITY_AUDIENCE no .env}
+  Identity__Auth0__Domain: ${IDENTITY_AUTH0_DOMAIN:?defina IDENTITY_AUTH0_DOMAIN no .env}
+  Identity__Auth0__ClientId: ${IDENTITY_AUTH0_CLIENT_ID:?defina IDENTITY_AUTH0_CLIENT_ID no .env}
+  Identity__Auth0__ClientSecret: ${IDENTITY_AUTH0_CLIENT_SECRET:?defina IDENTITY_AUTH0_CLIENT_SECRET no .env}
+  Cors__AllowedOrigins__0: http://localhost:5173
+  # limites de taxa: os padroes sao os do produto; suba no .env so para teste de carga (ver scripts/load-webhooks.py)
+  RateLimiting__PermitLimit: ${RATE_LIMIT_PERMIT:-100}
+  RateLimiting__WebhookIpPermitLimit: ${RATE_LIMIT_WEBHOOK_IP:-3000}
+  RateLimiting__WebhookTenantPermitLimit: ${RATE_LIMIT_WEBHOOK_TENANT:-600}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,6 +40,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U riskguard -d riskguard"]
       interval: 5s
       retries: 10
+
   redis:
     image: redis:7-alpine
     ports:
@@ -23,5 +49,46 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: riskguard-api:local
+    command: ["--migrate"]
+    environment:
+      <<: *api-environment
+      Postgres__AdminConnectionString: Host=postgres;Port=5432;Database=riskguard;Username=riskguard;Password=riskguard_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: riskguard-api:local
+    environment:
+      <<: *api-environment
+      # a API sobe sem a credencial administrativa; o proxy e a rede do Docker (o painel chama direto, sem proxy reverso)
+    ports:
+      - "5080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5080
+        VITE_AUTH0_DOMAIN: ${IDENTITY_AUTH0_DOMAIN}
+        VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:?defina VITE_AUTH0_CLIENT_ID no .env}
+        VITE_AUTH0_AUDIENCE: ${IDENTITY_AUDIENCE}
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
