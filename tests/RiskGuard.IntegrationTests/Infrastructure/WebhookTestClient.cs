@@ -17,7 +17,12 @@ public static class TestCredentialStore
     public static TestCredentials? Get(Guid tenantId, string platform) => Store.TryGetValue((tenantId, platform), out var c) ? c : null;
 
     public static TestCredentials NewCredentials(string platform) => new(
-        platform == "shopify" ? $"loja-{Guid.NewGuid():N}"[..14] + ".myshopify.com" : Random.Shared.Next(100_000, 999_999_999).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        platform switch
+        {
+            "shopify" => $"loja-{Guid.NewGuid():N}"[..14] + ".myshopify.com",
+            "wake" => $"LojaWake{Guid.NewGuid():N}"[..14],
+            _ => Random.Shared.Next(100_000, 999_999_999).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        },
         $"whsec_{Guid.NewGuid():N}",
         $"tok_{Guid.NewGuid():N}");
 }
@@ -28,6 +33,8 @@ public static class WebhookTestClient
     public static string ShopifyHeader => "X-Shopify-Hmac-SHA256";
 
     public static string NuvemshopHeader => "x-linkedstore-hmac-sha256";
+
+    public static string WakeHeader => "X-RiskGuard-Token";
 
     /// <summary>Assinatura no formato da plataforma (Shopify: base64; Nuvemshop: hex).</summary>
     public static string Sign(string platform, byte[] body, string secret)
@@ -57,7 +64,15 @@ public static class WebhookTestClient
         var secret = secretOverride ?? TestCredentialStore.Get(tenantId, platform)?.WebhookSecret;
         if (sign && secret is not null)
         {
-            request.Headers.TryAddWithoutValidation(platform == "nuvemshop" ? NuvemshopHeader : ShopifyHeader, Sign(platform, bytes, secret));
+            if (platform == "wake")
+            {
+                // A Wake nao assina o corpo: o lojista cadastra um header proprio na inscricao, e ele chega em toda notificacao.
+                request.Headers.TryAddWithoutValidation(WakeHeader, secret);
+            }
+            else
+            {
+                request.Headers.TryAddWithoutValidation(platform == "nuvemshop" ? NuvemshopHeader : ShopifyHeader, Sign(platform, bytes, secret));
+            }
         }
 
         foreach (var (name, value) in headers)

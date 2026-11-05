@@ -17,5 +17,7 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
   return dateTime.format(new Date(iso))
 }
 
+/** Nome para exibir. Plataforma nova sem entrada aqui aparece com o id capitalizado (o nome oficial vem de GET /platforms). */
 export const platformLabel = (platform: string) =>
-  ({ shopify: 'Shopify', nuvemshop: 'Nuvemshop' })[platform.toLowerCase()] ?? platform
+  ({ shopify: 'Shopify', nuvemshop: 'Nuvemshop', wake: 'Wake' })[platform.toLowerCase()] ??
+  platform.charAt(0).toUpperCase() + platform.slice(1)

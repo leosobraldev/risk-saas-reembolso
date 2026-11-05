@@ -144,9 +144,9 @@ function OrderRow({ row, threshold }: { row: RiskEvaluation; threshold?: number 
                 </ul>
               </>
             )}
-            {threshold !== undefined && row.score >= threshold && (
+            {threshold !== undefined && row.score > threshold && (
               <p className="mt-3 text-ink-muted">
-                Score no limite ou acima: se o RiskGuard reteve este pedido, libere-o em{' '}
+                Score acima do limite: se o RiskGuard reteve este pedido, libere-o em{' '}
                 <Link to="/acoes" className="font-semibold text-ink underline underline-offset-2">
                   Ações
                 </Link>

@@ -23,6 +23,12 @@ describe('errorMessage', () => {
   })
 })
 
+describe('errorMessage: conexões', () => {
+  it('token de acesso obrigatório tem mensagem própria', () => {
+    expect(errorMessage(new ApiError(400, 'connection.access_token_required', 'x'))).toContain('exige o token de acesso')
+  })
+})
+
 describe('isRetryable', () => {
   it.each([
     [new ApiError(0, 'network.unreachable', ''), true],

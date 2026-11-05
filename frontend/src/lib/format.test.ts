@@ -21,6 +21,7 @@ describe('format', () => {
   it('nomeia as plataformas conhecidas e preserva as desconhecidas', () => {
     expect(platformLabel('shopify')).toBe('Shopify')
     expect(platformLabel('NUVEMSHOP')).toBe('Nuvemshop')
-    expect(platformLabel('outra')).toBe('outra')
+    expect(platformLabel('wake')).toBe('Wake')
+    expect(platformLabel('outra')).toBe('Outra') // plataforma nova sem entrada: id capitalizado
   })
 })

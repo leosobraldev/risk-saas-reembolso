@@ -69,6 +69,7 @@ public sealed class ApiFactory(
         // APIs das plataformas FALSAS: o handler de teste substitui a rede (HttpClientFactory real, sem trafego externo).
         builder.UseSetting("PlatformApis:Platforms:shopify:BaseUrl", "https://shopify.sim.test/");
         builder.UseSetting("PlatformApis:Platforms:nuvemshop:BaseUrl", "https://nuvemshop.sim.test/");
+        builder.UseSetting("PlatformApis:Platforms:wake:BaseUrl", "https://wake.sim.test/");
 
         // Captura os eventos publicados via MediatR (prova a comunicacao entre modulos sem depender do RiskModule).
         builder.ConfigureServices(services =>
@@ -90,7 +91,7 @@ public sealed class ApiFactory(
                 bearer.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
             });
             services.AddSingleton<FakePlatformsHandler>();
-            foreach (var platform in new[] { "shopify", "nuvemshop" })
+            foreach (var platform in RiskGuard.Core.Abstractions.PlatformIds.All) // toda plataforma suportada fala com a rede falsa
             {
                 services.AddHttpClient(platform).ConfigurePrimaryHttpMessageHandler(sp => sp.GetRequiredService<FakePlatformsHandler>());
             }

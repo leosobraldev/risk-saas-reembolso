@@ -1,4 +1,4 @@
-import type { AuditEvent, CurrentTenant, OrderAction, Page, PlatformConnection, RiskEvaluation } from '@/api/types'
+import type { AuditEvent, CurrentTenant, OrderAction, Page, PlatformConnection, PlatformInfo, RiskEvaluation } from '@/api/types'
 
 export const page = <T>(items: T[], total = items.length, pageNumber = 1): Page<T> => ({ items, page: pageNumber, pageSize: 20, total })
 
@@ -58,3 +58,18 @@ export const auditEvent = (overrides: Partial<AuditEvent> = {}): AuditEvent => (
   details: 'limite 80 -> 65; bloqueio automático desligado -> ligado',
   ...overrides,
 })
+
+/** O que GET /api/v1/platforms devolve hoje. */
+export const platforms: PlatformInfo[] = [
+  { id: 'shopify', name: 'Shopify', accountIdLabel: 'Domínio da loja', accountIdHint: 'minha-loja.myshopify.com', requiresAccessToken: false, supportsActions: true, webhookSecretHelp: null },
+  { id: 'nuvemshop', name: 'Nuvemshop', accountIdLabel: 'Id da loja', accountIdHint: 'Número da loja na Nuvemshop', requiresAccessToken: false, supportsActions: true, webhookSecretHelp: null },
+  {
+    id: 'wake',
+    name: 'Wake',
+    accountIdLabel: 'Nome da loja',
+    accountIdHint: 'Nome da loja na Wake (campo "loja" do webhook)',
+    requiresAccessToken: true,
+    supportsActions: false,
+    webhookSecretHelp: 'A Wake não assina o corpo do webhook. Ao inscrever o webhook, cadastre o cabeçalho X-RiskGuard-Token com este mesmo valor.',
+  },
+]

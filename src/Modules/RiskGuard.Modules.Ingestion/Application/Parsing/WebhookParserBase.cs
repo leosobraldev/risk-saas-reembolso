@@ -18,6 +18,26 @@ public abstract partial class WebhookParserBase : IWebhookParser
 
     public abstract string Platform { get; }
 
+    public string? ReadNotificationOrderId(string payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload, JsonOptions);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? ReadNotificationOrderId(document.RootElement)?.Trim()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public Result<NormalizedOrder> Parse(string payload)
     {
         if (string.IsNullOrWhiteSpace(payload))
@@ -89,6 +109,9 @@ public abstract partial class WebhookParserBase : IWebhookParser
     /// processamento a buscar o pedido na API da plataforma. Por padrao, nenhum payload e considerado incompleto.
     /// </summary>
     protected virtual Error? DetectIncompletePayload(JsonElement root) => null;
+
+    /// <summary>Onde, numa notificacao que traz so o id, esta o numero do pedido. Padrao: o <c>id</c> da raiz (Nuvemshop).</summary>
+    protected virtual string? ReadNotificationOrderId(JsonElement root) => ReadString(root, "id");
 
     protected abstract string? ReadExternalOrderId(JsonElement root);
 

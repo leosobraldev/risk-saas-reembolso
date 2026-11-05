@@ -123,3 +123,44 @@ public sealed class NuvemshopSignatureVerifier : HmacWebhookSignatureVerifier
         }
     }
 }
+
+/// <summary>
+/// Plataformas que nao assinam o corpo: o lojista cadastra um header proprio ao inscrever o webhook e o valor chega em toda
+/// notificacao. A autenticidade e esse token compartilhado (o segredo da conexao), comparado em tempo constante. Mais fraco que HMAC
+/// (o token trafega a cada requisicao, so protegido por TLS), por isso so para plataformas sem assinatura.
+/// </summary>
+public abstract class SharedTokenWebhookVerifier : IWebhookSignatureVerifier
+{
+    public abstract string Platform { get; }
+
+    protected abstract string TokenHeaderName { get; }
+
+    public bool IsValid(IReadOnlyDictionary<string, string> headers, ReadOnlySpan<byte> body, string secret)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+
+        if (string.IsNullOrEmpty(secret))
+        {
+            return false;
+        }
+
+        var header = headers.FirstOrDefault(h => h.Key.Equals(TokenHeaderName, StringComparison.OrdinalIgnoreCase)).Value;
+        if (string.IsNullOrWhiteSpace(header))
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(header.Trim()), Encoding.UTF8.GetBytes(secret));
+    }
+}
+
+/// <summary>Wake: nao ha HMAC. O header <c>X-RiskGuard-Token</c> e cadastrado na inscricao do webhook com o segredo da conexao.</summary>
+public sealed class WakeTokenVerifier : SharedTokenWebhookVerifier
+{
+    public const string HeaderName = "X-RiskGuard-Token";
+
+    public override string Platform => RiskGuard.Core.Abstractions.PlatformIds.Wake;
+
+    protected override string TokenHeaderName => HeaderName;
+}
+

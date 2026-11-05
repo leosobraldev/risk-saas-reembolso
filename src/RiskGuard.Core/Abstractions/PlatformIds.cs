@@ -7,8 +7,9 @@ public static partial class PlatformIds
 {
     public const string Shopify = "shopify";
     public const string Nuvemshop = "nuvemshop";
+    public const string Wake = "wake";
 
-    public static IReadOnlyList<string> All { get; } = [Shopify, Nuvemshop];
+    public static IReadOnlyList<string> All { get; } = [Shopify, Nuvemshop, Wake];
 
     public static bool IsSupported(string? platform) =>
         platform is not null && All.Contains(platform.Trim(), StringComparer.OrdinalIgnoreCase);
@@ -28,6 +29,7 @@ public static partial class PlatformIds
         {
             Shopify => ShopifyDomain().IsMatch(accountId),
             Nuvemshop => NuvemshopStoreId().IsMatch(accountId),
+            Wake => WakeStoreName().IsMatch(accountId),
             _ => false,
         };
     }
@@ -37,4 +39,8 @@ public static partial class PlatformIds
 
     [GeneratedRegex(@"^\d{1,15}$")]
     private static partial Regex NuvemshopStoreId();
+
+    // So identifica a loja na tela e no log: o host das chamadas da Wake e fixo (api.fbits.net) e a loja vem do token.
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,99}$")]
+    private static partial Regex WakeStoreName();
 }

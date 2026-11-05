@@ -120,6 +120,7 @@ app.MapTenantManagementEndpoints();
 app.MapActionEndpoints();
 app.MapPrivacyEndpoints();
 app.MapAuditEndpoints();
+app.MapPlatformEndpoints();
 
 await app.RunAsync();
 return 0;

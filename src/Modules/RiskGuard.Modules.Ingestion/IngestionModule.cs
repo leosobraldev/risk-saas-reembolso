@@ -29,13 +29,16 @@ public sealed class IngestionModule : IModule
         // Strategy por plataforma: suportar uma nova plataforma = adicionar um parser aqui.
         services.AddSingleton<IWebhookParser, ShopifyWebhookParser>();
         services.AddSingleton<IWebhookParser, NuvemshopWebhookParser>();
+        services.AddSingleton<IWebhookParser, WakeWebhookParser>();
         services.AddSingleton<IWebhookParserResolver, WebhookParserResolver>();
 
         // Strategy de autenticidade (HMAC) por plataforma e busca de pedidos quando o webhook traz so o id.
         services.AddSingleton<IWebhookSignatureVerifier, ShopifySignatureVerifier>();
         services.AddSingleton<IWebhookSignatureVerifier, NuvemshopSignatureVerifier>();
+        services.AddSingleton<IWebhookSignatureVerifier, WakeTokenVerifier>();
         services.AddSingleton<IWebhookSignatureVerifierResolver, WebhookSignatureVerifierResolver>();
         services.AddSingleton<IPlatformOrderFetcher, NuvemshopOrderFetcher>();
+        services.AddSingleton<IPlatformOrderFetcher, WakeOrderFetcher>();
 
         services.AddScoped<ProcessWebhookJob>();
 

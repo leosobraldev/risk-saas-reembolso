@@ -48,9 +48,12 @@ internal sealed class UpsertPlatformConnectionCommandHandler(
         {
             return new Error(
                 "connection.invalid_account",
-                platform == PlatformIds.Shopify
-                    ? "Informe o dominio da loja no formato minha-loja.myshopify.com."
-                    : "Informe o id numerico da loja.",
+                platform switch
+                {
+                    PlatformIds.Shopify => "Informe o dominio da loja no formato minha-loja.myshopify.com.",
+                    PlatformIds.Wake => "Informe o nome da loja na Wake (letras, numeros, '-', '_' ou '.').",
+                    _ => "Informe o id numerico da loja.",
+                },
                 ErrorType.Validation);
         }
 
@@ -58,6 +61,15 @@ internal sealed class UpsertPlatformConnectionCommandHandler(
             || request.AccessToken is { Length: > MaxSecretLength })
         {
             return new Error("connection.invalid_secret", "Informe o segredo do webhook (e um token de acesso com ate 1000 caracteres).", ErrorType.Validation);
+        }
+
+        // Plataforma cujo webhook traz so o id (ex.: Wake): sem o token nao ha como buscar o pedido, entao a conexao nao serve.
+        if (PlatformCatalog.Find(platform)?.RequiresAccessToken == true && string.IsNullOrWhiteSpace(request.AccessToken))
+        {
+            return new Error(
+                "connection.access_token_required",
+                "Esta plataforma exige o token de acesso: o webhook traz so o numero do pedido e os dados sao buscados na API.",
+                ErrorType.Validation);
         }
 
         var now = timeProvider.GetUtcNow();

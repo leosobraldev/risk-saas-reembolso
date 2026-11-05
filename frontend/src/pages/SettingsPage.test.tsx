@@ -1,13 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/api/client'
-import { connection, tenant } from '@/test/fixtures'
+import { connection, platforms, tenant } from '@/test/fixtures'
 import { fakeClient, renderWithApp } from '@/test/render'
 import { SettingsPage } from './SettingsPage'
 
 function clientWith(connections = [connection()], overrides: Partial<ReturnType<typeof fakeClient>> = {}) {
   return fakeClient({
-    get: vi.fn().mockImplementation(async (path: string) => (path === '/api/v1/tenants/me' ? tenant : connections)),
+    get: vi.fn().mockImplementation(async (path: string) => (path === '/api/v1/tenants/me' ? tenant : path === '/api/v1/platforms' ? platforms : connections)),
     ...overrides,
   })
 }
@@ -71,7 +71,7 @@ describe('SettingsPage: lojas conectadas', () => {
 
     expect(await screen.findByDisplayValue('aurora.myshopify.com')).toBeInTheDocument()
     expect(screen.getByText(/Conectada · atualizada/)).toBeInTheDocument()
-    expect(screen.getByText('Não conectada')).toBeInTheDocument()
+    expect(screen.getAllByText('Não conectada')).toHaveLength(2) // Nuvemshop e Wake
     expect(screen.getByText('(já informado)')).toBeInTheDocument()
     for (const field of screen.getAllByLabelText(/Segredo do webhook|Token de acesso/)) {
       expect(field).toHaveValue('')
@@ -136,6 +136,87 @@ describe('SettingsPage: lojas conectadas', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Desconectar' }))
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith('/api/v1/tenants/me/connections/shopify'))
+  })
+})
+
+describe('SettingsPage: plataformas vindas do catálogo', () => {
+  it('mostra um cartão para cada plataforma do catálogo, inclusive a Wake', async () => {
+    renderWithApp(<SettingsPage />, clientWith([]))
+
+    expect(await screen.findByRole('heading', { name: 'Shopify' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nuvemshop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Wake' })).toBeInTheDocument()
+  })
+
+  it('uma plataforma nova no catálogo aparece sem mudar o painel', async () => {
+    const extra = [...platforms, { ...platforms[0]!, id: 'tray', name: 'Tray Commerce', accountIdLabel: 'Código da loja', accountIdHint: '12345' }]
+    const client = fakeClient({
+      get: vi.fn().mockImplementation(async (path: string) => (path === '/api/v1/tenants/me' ? tenant : path === '/api/v1/platforms' ? extra : [])),
+    })
+    renderWithApp(<SettingsPage />, client)
+
+    const card = (await screen.findByRole('heading', { name: 'Tray Commerce' })).closest('form')!
+    expect(within(card).getByLabelText('Código da loja')).toBeInTheDocument()
+  })
+
+  it('a Wake mostra o rótulo da loja, a ajuda do cabeçalho e que ela só avalia', async () => {
+    renderWithApp(<SettingsPage />, clientWith([]))
+    const wake = (await screen.findByRole('heading', { name: 'Wake' })).closest('form')!
+
+    expect(within(wake).getByLabelText('Nome da loja')).toBeInTheDocument()
+    expect(within(wake).getByText(/cadastre o cabeçalho X-RiskGuard-Token/)).toBeInTheDocument()
+    expect(within(wake).getByText(/avalia e recomenda/)).toBeInTheDocument()
+    expect(within(wake).getByLabelText(/Token de acesso/)).toHaveAccessibleName(/obrigatório/)
+  })
+
+  it('a Wake só deixa conectar com o token de acesso preenchido e o envia', async () => {
+    const put = vi.fn().mockResolvedValue({})
+    renderWithApp(<SettingsPage />, clientWith([], { put }))
+    const wake = (await screen.findByRole('heading', { name: 'Wake' })).closest('form')!
+    const connect = within(wake).getByRole('button', { name: 'Conectar' })
+
+    await userEvent.type(within(wake).getByLabelText('Nome da loja'), 'MinhaLoja')
+    await userEvent.type(within(wake).getByLabelText('Segredo do webhook'), 'token-do-webhook')
+    expect(connect).toBeDisabled() // falta o token de acesso
+
+    await userEvent.type(within(wake).getByLabelText(/Token de acesso/), 'token-da-api')
+    expect(connect).toBeEnabled()
+    await userEvent.click(connect)
+
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith('/api/v1/tenants/me/connections/wake', {
+        accountId: 'MinhaLoja',
+        webhookSecret: 'token-do-webhook',
+        accessToken: 'token-da-api',
+      }),
+    )
+    await waitFor(() => expect(within(wake).getByLabelText('Segredo do webhook')).toHaveValue(''))
+  })
+
+  it('as plataformas que agem na loja não mostram o aviso de "só avalia"', async () => {
+    renderWithApp(<SettingsPage />, clientWith([]))
+    const shopify = (await screen.findByRole('heading', { name: 'Shopify' })).closest('form')!
+
+    expect(within(shopify).queryByText(/avalia e recomenda/)).not.toBeInTheDocument()
+    expect(within(shopify).getByLabelText(/Token de acesso/)).not.toHaveAccessibleName(/obrigatório/)
+  })
+
+  it('ao substituir uma conexão que já tem token, avisa que em branco o token é removido', async () => {
+    renderWithApp(<SettingsPage />, clientWith([connection()]))
+
+    expect(await screen.findByText(/em branco, o token atual é removido/)).toBeInTheDocument()
+  })
+
+  it('erro ao carregar o catálogo aparece em português e permite tentar de novo', async () => {
+    const client = fakeClient({
+      get: vi.fn().mockImplementation(async (path: string) => {
+        if (path === '/api/v1/platforms') throw new ApiError(503, 'x', 'x')
+        return path === '/api/v1/tenants/me' ? tenant : []
+      }),
+    })
+    renderWithApp(<SettingsPage />, client)
+
+    expect(await screen.findByText('O RiskGuard está indisponível no momento. Tente novamente em instantes.')).toBeInTheDocument()
   })
 })
 

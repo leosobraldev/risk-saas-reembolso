@@ -22,6 +22,9 @@ public static class WebhookErrorCodes
 {
     /// <summary>O payload e so uma notificacao (id); os dados do pedido precisam ser buscados na API da plataforma.</summary>
     public const string NeedsOrderFetch = "webhook.needs_order_fetch";
+
+    /// <summary>A notificacao e valida, mas nao e um pedido novo (ex.: mudanca de situacao): e dada como processada, sem avaliar.</summary>
+    public const string Ignored = "webhook.ignored";
 }
 
 public sealed partial class NuvemshopOrderFetcher(IHttpClientFactory httpClientFactory, IOptions<PlatformApisOptions> options) : IPlatformOrderFetcher
@@ -48,6 +51,43 @@ public sealed partial class NuvemshopOrderFetcher(IHttpClientFactory httpClientF
         var root = options.Value.For(Platform).BaseUrl ?? DefaultBase;
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(root, $"v1/{credentials.AccountId}/orders/{externalOrderId}"));
         request.Headers.TryAddWithoutValidation("Authentication", $"bearer {credentials.AccessToken}"); // header nao padrao, conforme a documentacao
+
+        using var client = httpClientFactory.CreateClient(Platform);
+        return await ExternalApiCaller.SendAsync(client, request, Platform, cancellationToken).ConfigureAwait(false);
+    }
+
+    [GeneratedRegex(@"^\d{1,20}$")]
+    private static partial Regex OrderId();
+}
+
+/// <summary>
+/// Wake: <c>GET https://api.fbits.net/pedidos/{pedidoId}</c> com <c>Authorization: Bearer {token}</c>. A API e uma so para todas as lojas
+/// (a loja vem do token), entao nenhum dado do lojista entra no host. A raiz pode ser trocada por configuracao.
+/// </summary>
+public sealed partial class WakeOrderFetcher(IHttpClientFactory httpClientFactory, IOptions<PlatformApisOptions> options) : IPlatformOrderFetcher
+{
+    private static readonly Uri DefaultBase = new("https://api.fbits.net/");
+
+    public string Platform => RiskGuard.Core.Abstractions.PlatformIds.Wake;
+
+    public async Task<ExternalApiResult> FetchOrderAsync(PlatformCredentials credentials, string externalOrderId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(credentials);
+
+        if (string.IsNullOrWhiteSpace(credentials.AccessToken))
+        {
+            return ExternalApiResult.Permanent("Lojista sem token de acesso da Wake: nao e possivel buscar o pedido.");
+        }
+
+        // Defesa em profundidade: so ids numericos entram na rota.
+        if (!OrderId().IsMatch(externalOrderId ?? string.Empty))
+        {
+            return ExternalApiResult.Permanent("Identificador de pedido invalido.");
+        }
+
+        var root = options.Value.For(Platform).BaseUrl ?? DefaultBase;
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(root, $"pedidos/{externalOrderId}"));
+        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {credentials.AccessToken}");
 
         using var client = httpClientFactory.CreateClient(Platform);
         return await ExternalApiCaller.SendAsync(client, request, Platform, cancellationToken).ConfigureAwait(false);

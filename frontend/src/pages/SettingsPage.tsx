@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { errorMessage } from '@/api/errors'
-import { useAnonymizeCustomer, useConnections, useRemoveConnection, useSaveConnection, useTenant, useUpdateSettings } from '@/api/queries'
-import { PLATFORMS, type Platform, type PlatformConnection, type TenantSettings } from '@/api/types'
+import { useAnonymizeCustomer, useConnections, usePlatforms, useRemoveConnection, useSaveConnection, useTenant, useUpdateSettings } from '@/api/queries'
+import type { PlatformConnection, PlatformInfo, TenantSettings } from '@/api/types'
 import { PageHeader } from '@/components/PageHeader'
 import { ErrorState } from '@/components/states'
 import {
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { formatRelative, platformLabel } from '@/lib/format'
+import { formatRelative } from '@/lib/format'
 
 function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
@@ -77,7 +77,7 @@ function RiskRulesForm({ saved }: { saved: TenantSettings }) {
   return (
     <Section
       title="Regras de risco"
-      description="Pedidos com score igual ou acima do limite são tratados como risco alto. Com o bloqueio automático ligado, o RiskGuard retém esses pedidos na sua loja; desligado, só sinaliza."
+      description="Pedidos com score acima do limite são tratados como risco alto. Com o bloqueio automático ligado, o RiskGuard retém esses pedidos na sua loja; desligado, só sinaliza."
     >
       <form
         className="flex flex-col gap-5"
@@ -122,21 +122,24 @@ function RiskRulesForm({ saved }: { saved: TenantSettings }) {
 }
 
 function Connections() {
+  const platforms = usePlatforms()
   const connections = useConnections()
 
   return (
     <Section
       title="Lojas conectadas"
-      description="O RiskGuard recebe os pedidos por webhook e age na API da sua loja. Os segredos só entram: depois de salvos, não são mostrados de novo."
+      description="O RiskGuard recebe os pedidos por webhook e, nas plataformas que permitem, age na sua loja. Os segredos só entram: depois de salvos, não são mostrados de novo."
     >
-      {connections.isPending ? (
-        <Skeleton className="h-32 w-full" />
+      {platforms.isError ? (
+        <ErrorState error={platforms.error} onRetry={() => void platforms.refetch()} />
       ) : connections.isError ? (
         <ErrorState error={connections.error} onRetry={() => void connections.refetch()} />
+      ) : platforms.isPending || connections.isPending ? (
+        <Skeleton className="h-32 w-full" />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {PLATFORMS.map((platform) => (
-            <ConnectionCard key={platform} platform={platform} current={connections.data.find((c) => c.platform.toLowerCase() === platform)} />
+          {platforms.data.map((info) => (
+            <ConnectionCard key={info.id} info={info} current={connections.data.find((c) => c.platform.toLowerCase() === info.id)} />
           ))}
         </div>
       )}
@@ -144,15 +147,15 @@ function Connections() {
   )
 }
 
-function ConnectionCard({ platform, current }: { platform: Platform; current?: PlatformConnection }) {
+function ConnectionCard({ info, current }: { info: PlatformInfo; current?: PlatformConnection }) {
+  const platform = info.id
   const save = useSaveConnection()
   const remove = useRemoveConnection()
   const [accountId, setAccountId] = useState(current?.accountId ?? '')
   const [webhookSecret, setWebhookSecret] = useState('')
   const [accessToken, setAccessToken] = useState('')
-  const name = platformLabel(platform)
-  const idLabel = platform === 'shopify' ? 'Domínio da loja' : 'Id da loja'
-  const idHint = platform === 'shopify' ? 'minha-loja.myshopify.com' : 'Número da loja na Nuvemshop'
+  const name = info.name
+  const missingToken = info.requiresAccessToken && accessToken.trim() === ''
 
   return (
     <form
@@ -178,9 +181,15 @@ function ConnectionCard({ platform, current }: { platform: Platform; current?: P
         </span>
       </div>
 
+      {!info.supportsActions && (
+        <p className="rounded-md border border-rule bg-sunken px-3 py-2 text-xs text-ink-muted">
+          Nesta plataforma o RiskGuard <strong className="text-ink">avalia e recomenda</strong>, mas ainda não retém nem libera pedidos.
+        </p>
+      )}
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${platform}-account`}>{idLabel}</Label>
-        <Input id={`${platform}-account`} value={accountId} placeholder={idHint} autoComplete="off" onChange={(e) => setAccountId(e.target.value)} />
+        <Label htmlFor={`${platform}-account`}>{info.accountIdLabel}</Label>
+        <Input id={`${platform}-account`} value={accountId} placeholder={info.accountIdHint} autoComplete="off" onChange={(e) => setAccountId(e.target.value)} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${platform}-secret`}>Segredo do webhook</Label>
@@ -190,16 +199,41 @@ function ConnectionCard({ platform, current }: { platform: Platform; current?: P
           value={webhookSecret}
           autoComplete="new-password"
           placeholder={current ? 'Digite para substituir' : ''}
+          aria-describedby={info.webhookSecretHelp ? `${platform}-secret-help` : undefined}
           onChange={(e) => setWebhookSecret(e.target.value)}
         />
+        {info.webhookSecretHelp && (
+          <p id={`${platform}-secret-help`} className="text-xs text-ink-muted">
+            {info.webhookSecretHelp}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${platform}-token`}>Token de acesso {current?.hasAccessToken && <span className="font-normal text-ink-muted">(já informado)</span>}</Label>
-        <Input id={`${platform}-token`} type="password" value={accessToken} autoComplete="new-password" placeholder="Necessário para bloquear e liberar pedidos" onChange={(e) => setAccessToken(e.target.value)} />
+        <Label htmlFor={`${platform}-token`}>
+          Token de acesso{' '}
+          {info.requiresAccessToken ? (
+            <span className="font-normal text-ink-muted">(obrigatório)</span>
+          ) : (
+            current?.hasAccessToken && <span className="font-normal text-ink-muted">(já informado)</span>
+          )}
+        </Label>
+        <Input
+          id={`${platform}-token`}
+          type="password"
+          value={accessToken}
+          autoComplete="new-password"
+          placeholder={
+            info.requiresAccessToken ? 'Necessário para buscar os dados dos pedidos' : info.supportsActions ? 'Necessário para bloquear e liberar pedidos' : ''
+          }
+          onChange={(e) => setAccessToken(e.target.value)}
+        />
+        {current?.hasAccessToken && !info.requiresAccessToken && (
+          <p className="text-xs text-ink-muted">Ao substituir a conexão, informe o token de novo; em branco, o token atual é removido.</p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="sm" disabled={save.isPending || accountId.trim() === '' || webhookSecret === ''}>
+        <Button type="submit" size="sm" disabled={save.isPending || accountId.trim() === '' || webhookSecret === '' || missingToken}>
           {save.isPending ? 'Salvando…' : current ? 'Substituir conexão' : 'Conectar'}
         </Button>
         {current && (

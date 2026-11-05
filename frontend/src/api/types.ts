@@ -80,5 +80,15 @@ export interface AuditEvent {
   details: string | null
 }
 
-export const PLATFORMS = ['shopify', 'nuvemshop'] as const
-export type Platform = (typeof PLATFORMS)[number]
+/** Plataforma de e-commerce suportada (GET /api/v1/platforms): o painel monta o formulário de conexão a partir disto. */
+export interface PlatformInfo {
+  id: string
+  name: string
+  accountIdLabel: string
+  accountIdHint: string
+  /** O webhook traz só o id do pedido: sem o token de acesso o pedido não pode ser buscado. */
+  requiresAccessToken: boolean
+  /** A plataforma permite reter, sinalizar e liberar pedidos. Falso: só avalia e recomenda. */
+  supportsActions: boolean
+  webhookSecretHelp: string | null
+}

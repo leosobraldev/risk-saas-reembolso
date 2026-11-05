@@ -21,12 +21,14 @@ public sealed partial class FakePlatformsHandler : HttpMessageHandler
     private readonly ConcurrentDictionary<string, ConcurrentQueue<HttpStatusCode>> _scripts = new();
     private readonly ConcurrentDictionary<string, List<FulfillmentOrder>> _shopifyOrders = new();
     private readonly ConcurrentDictionary<string, NuvemshopOrder> _nuvemshopOrders = new();
+    private readonly ConcurrentDictionary<string, WakeOrder> _wakeOrders = new();
     private long _nextFulfillmentOrderId = 7_000_000_000;
 
     public IReadOnlyCollection<PlatformCall> Calls => _calls;
 
     public IReadOnlyList<PlatformCall> CallsFor(string externalOrderId) =>
         _calls.Where(c => c.Url.AbsolutePath.Contains($"/orders/{externalOrderId}", StringComparison.Ordinal)
+                          || c.Url.AbsolutePath.EndsWith($"/pedidos/{externalOrderId}", StringComparison.Ordinal)
                           || _shopifyOrders.TryGetValue(externalOrderId, out var fos)
                              && fos.Any(f => c.Url.AbsolutePath.Contains($"/fulfillment_orders/{f.Id}/", StringComparison.Ordinal))).ToList();
 
@@ -58,17 +60,30 @@ public sealed partial class FakePlatformsHandler : HttpMessageHandler
 
     public string? NuvemshopNote(string orderId) => _nuvemshopOrders.TryGetValue(orderId, out var o) ? o.Note : null;
 
+    // ---- Wake ----
+
+    /// <summary>Pedido que <c>GET /pedidos/{id}</c> devolve (a Wake so manda o numero no webhook; e-mail e valor vem daqui).</summary>
+    public void AddWakeOrder(string orderId, string email, decimal total, string createdAt = "2026-03-01T09:11:51.877Z") =>
+        _wakeOrders[orderId] = new WakeOrder(orderId, email, total, createdAt);
+
     // ---- roteamento ----
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var url = request.RequestUri!;
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-        var platform = url.Host.StartsWith("shopify", StringComparison.Ordinal) ? "shopify" : "nuvemshop";
-        request.Headers.TryGetValues(platform == "shopify" ? "X-Shopify-Access-Token" : "Authentication", out var tokens);
+        var platform = url.Host.StartsWith("shopify", StringComparison.Ordinal) ? "shopify"
+            : url.Host.StartsWith("wake", StringComparison.Ordinal) ? "wake"
+            : "nuvemshop";
+        request.Headers.TryGetValues(platform switch { "shopify" => "X-Shopify-Access-Token", "wake" => "Authorization", _ => "Authentication" }, out var tokens);
         _calls.Enqueue(new PlatformCall(platform, request.Method.Method, url, tokens?.FirstOrDefault(), body));
 
-        return platform == "shopify" ? HandleShopify(request.Method, url, body) : HandleNuvemshop(request.Method, url, body);
+        return platform switch
+        {
+            "shopify" => HandleShopify(request.Method, url, body),
+            "wake" => HandleWake(request.Method, url, tokens?.FirstOrDefault()),
+            _ => HandleNuvemshop(request.Method, url, body),
+        };
     }
 
     private HttpResponseMessage HandleShopify(HttpMethod method, Uri url, string? body)
@@ -137,6 +152,37 @@ public sealed partial class FakePlatformsHandler : HttpMessageHandler
         }
 
         return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
+    private HttpResponseMessage HandleWake(HttpMethod method, Uri url, string? authorization)
+    {
+        if (method != HttpMethod.Get || WakeOrderPath().Match(url.AbsolutePath) is not { Success: true } match)
+        {
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        // A API real exige o token do lojista: sem "Bearer ..." responde 401.
+        if (authorization is null || !authorization.StartsWith("Bearer ", StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
+        var orderId = match.Groups["order"].Value;
+        if (Scripted(orderId) is { } scripted)
+        {
+            return new HttpResponseMessage(scripted);
+        }
+
+        return _wakeOrders.TryGetValue(orderId, out var order)
+            ? Json(HttpStatusCode.OK, new
+            {
+                pedidoId = long.Parse(orderId, System.Globalization.CultureInfo.InvariantCulture),
+                situacaoPedidoId = 1,
+                data = order.CreatedAt,
+                valorTotalPedido = order.Total,
+                usuario = new { usuarioId = 9, nome = "Comprador Teste", email = order.Email },
+            })
+            : new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 
     private HttpResponseMessage HandleNuvemshop(HttpMethod method, Uri url, string? body)
@@ -215,6 +261,17 @@ public sealed partial class FakePlatformsHandler : HttpMessageHandler
         public List<string> Holds { get; } = [];
     }
 
+    private sealed class WakeOrder(string id, string email, decimal total, string createdAt)
+    {
+        public string Id { get; } = id;
+
+        public string Email { get; } = email;
+
+        public decimal Total { get; } = total;
+
+        public string CreatedAt { get; } = createdAt;
+    }
+
     private sealed class NuvemshopOrder(string id, string email, string total, string createdAt)
     {
         public string Id { get; } = id;
@@ -241,4 +298,7 @@ public sealed partial class FakePlatformsHandler : HttpMessageHandler
 
     [GeneratedRegex(@"/v1/\d+/orders/(?<order>\d+)$")]
     private static partial Regex NuvemshopOrderPath();
+
+    [GeneratedRegex(@"^/pedidos/(?<order>\d+)$")]
+    private static partial Regex WakeOrderPath();
 }

@@ -6,8 +6,8 @@ import type {
   OrderAction,
   OrderActionStatus,
   Page,
-  Platform,
   PlatformConnection,
+  PlatformInfo,
   RiskEvaluation,
   RiskLevel,
   TenantSettings,
@@ -19,6 +19,7 @@ export const keys = {
   evaluationCount: (level: RiskLevel) => ['evaluation-count', level] as const,
   actions: (page: number, status?: OrderActionStatus) => ['actions', { page, status }] as const,
   actionCount: (status: OrderActionStatus) => ['action-count', status] as const,
+  platforms: ['platforms'] as const,
   connections: ['connections'] as const,
   audit: (page: number, action?: string) => ['audit', { page, action }] as const,
 }
@@ -87,13 +88,19 @@ export function useUpdateSettings() {
   })
 }
 
+/** Plataformas suportadas e o que cada uma exige. Dado estático do produto: não muda durante a sessão. */
+export function usePlatforms() {
+  const api = useApi()
+  return useQuery({ queryKey: keys.platforms, queryFn: () => api.get<PlatformInfo[]>('/api/v1/platforms'), staleTime: Infinity })
+}
+
 export function useConnections() {
   const api = useApi()
   return useQuery({ queryKey: keys.connections, queryFn: () => api.get<PlatformConnection[]>('/api/v1/tenants/me/connections') })
 }
 
 export interface ConnectionInput {
-  platform: Platform
+  platform: string
   accountId: string
   webhookSecret: string
   accessToken?: string
@@ -112,7 +119,7 @@ export function useRemoveConnection() {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (platform: Platform) => api.delete(`/api/v1/tenants/me/connections/${platform}`),
+    mutationFn: (platform: string) => api.delete(`/api/v1/tenants/me/connections/${platform}`),
     onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: keys.connections }), queryClient.invalidateQueries({ queryKey: ['audit'] })]),
   })
 }

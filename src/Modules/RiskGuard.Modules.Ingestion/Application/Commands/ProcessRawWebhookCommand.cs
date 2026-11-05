@@ -53,6 +53,14 @@ internal sealed class ProcessRawWebhookCommandHandler(
             parsed = await FetchAndParseAsync(request.TenantId, webhook, parser, cancellationToken).ConfigureAwait(false);
         }
 
+        // Notificacao valida que nao e pedido novo (ex.: Wake, mudanca de situacao): nada a avaliar; fica registrada como processada.
+        if (!parsed.IsSuccess && parsed.Error.Code == WebhookErrorCodes.Ignored)
+        {
+            webhook.MarkProcessed(timeProvider.GetUtcNow());
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return Result.Success();
+        }
+
         if (!parsed.IsSuccess)
         {
             // Falha permanente: reprocessar nao muda o resultado. Mantemos o raw para auditoria e nao relancamos.
@@ -89,7 +97,7 @@ internal sealed class ProcessRawWebhookCommandHandler(
         CancellationToken cancellationToken)
     {
         var fetcher = fetchers.FirstOrDefault(f => f.Platform.Equals(webhook.Platform, StringComparison.OrdinalIgnoreCase));
-        var externalId = ReadId(webhook.Payload);
+        var externalId = parser.ReadNotificationOrderId(webhook.Payload);
         if (fetcher is null || externalId is null)
         {
             return new Error("webhook.order_fetch_failed", "Nao ha como buscar o pedido desta plataforma.", ErrorType.Validation);
@@ -108,21 +116,6 @@ internal sealed class ProcessRawWebhookCommandHandler(
             ExternalApiStatus.TransientFailure => throw new TransientExternalApiException(fetched.Error ?? "Falha transitoria ao buscar o pedido."),
             _ => new Error("webhook.order_fetch_failed", fetched.Error ?? "Falha ao buscar o pedido.", ErrorType.Validation),
         };
-    }
-
-    private static string? ReadId(string payload)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(payload);
-            return document.RootElement.TryGetProperty("id", out var id)
-                ? id.ValueKind == JsonValueKind.String ? id.GetString() : id.GetRawText()
-                : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     private async Task<Order> FindOrCreateOrderAsync(Guid tenantId, NormalizedOrder normalized, CancellationToken cancellationToken)

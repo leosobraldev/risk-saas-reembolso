@@ -76,6 +76,13 @@ const demoClient: ApiClient = {
   async get(path, params) {
     await wait()
     if (path === '/api/v1/tenants/me') return tenant as never
+    if (path === '/api/v1/platforms') {
+      return [
+        { id: 'shopify', name: 'Shopify', accountIdLabel: 'Domínio da loja', accountIdHint: 'minha-loja.myshopify.com', requiresAccessToken: false, supportsActions: true, webhookSecretHelp: null },
+        { id: 'nuvemshop', name: 'Nuvemshop', accountIdLabel: 'Id da loja', accountIdHint: 'Número da loja na Nuvemshop', requiresAccessToken: false, supportsActions: true, webhookSecretHelp: null },
+        { id: 'wake', name: 'Wake', accountIdLabel: 'Nome da loja', accountIdHint: 'Nome da loja na Wake', requiresAccessToken: true, supportsActions: false, webhookSecretHelp: 'A Wake não assina o corpo do webhook. Ao inscrever o webhook, cadastre o cabeçalho X-RiskGuard-Token com este mesmo valor.' },
+      ] as never
+    }
     if (path === '/api/v1/risk/evaluations') return page(evaluations.filter((e) => !params?.level || e.level === params.level), params) as never
     if (path === '/api/v1/actions') return page(actions.filter((a) => !params?.status || a.status === params.status), params) as never
     if (path === '/api/v1/tenants/me/connections') return connections as never

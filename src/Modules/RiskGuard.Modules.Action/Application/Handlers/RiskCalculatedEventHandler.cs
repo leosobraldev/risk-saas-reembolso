@@ -54,9 +54,19 @@ internal sealed class RiskCalculatedEventHandler(
         }
 
         // O que a plataforma permite (pausar ou so sinalizar) define o tipo da acao.
-        var type = blockers.Resolve(notification.Platform)?.ActionType ?? OrderActionType.Block;
+        var blocker = blockers.Resolve(notification.Platform);
+        var type = blocker?.ActionType ?? OrderActionType.Block;
         var now = timeProvider.GetUtcNow();
-        var action = decision == ActionDecision.Block
+
+        // Plataforma sem integracao de acao (ex.: Wake, que nao tem "reter pedido"): o RiskGuard so avalia e recomenda. Registrar
+        // como "nao aplicada" (e nao deixar falhar por "sem integracao") diz a verdade ao lojista e nao gasta tentativas.
+        var skipReason = decision != ActionDecision.Block
+            ? "Risco alto, mas o bloqueio automatico (auto-block) esta desligado para este lojista."
+            : blocker is null
+                ? $"Risco alto, mas a plataforma '{notification.Platform}' ainda nao tem bloqueio automatico: o RiskGuard apenas avalia e recomenda."
+                : null;
+
+        var action = skipReason is null
             ? OrderAction.CreatePending(notification.TenantId, notification.EvaluationId, notification.OrderId, notification.Platform, notification.ExternalOrderId, notification.Score, type, now)
             : OrderAction.CreateSkipped(
                 notification.TenantId,
@@ -66,7 +76,7 @@ internal sealed class RiskCalculatedEventHandler(
                 notification.ExternalOrderId,
                 notification.Score,
                 type,
-                "Risco alto, mas o bloqueio automatico (auto-block) esta desligado para este lojista.",
+                skipReason,
                 now);
 
         db.OrderActions.Add(action);

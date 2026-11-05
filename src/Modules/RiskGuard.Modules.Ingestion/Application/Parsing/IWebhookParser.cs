@@ -17,6 +17,12 @@ public interface IWebhookParser
     string Platform { get; }
 
     Result<NormalizedOrder> Parse(string payload);
+
+    /// <summary>
+    /// Numero do pedido numa notificacao que traz so o id (para buscar o pedido na API da plataforma), ou <c>null</c> se o payload
+    /// nao for legivel. Por padrao, o campo <c>id</c> da raiz.
+    /// </summary>
+    string? ReadNotificationOrderId(string payload);
 }
 
 /// <summary>Seleciona a Strategy pela plataforma informada na rota.</summary>
