@@ -99,9 +99,18 @@ O CI (GitHub Actions, em pull requests para `main`) roda: restauração, checage
 
 ## Estado do projeto
 
-Fases 0 a 6 do SDD implementadas (backend, trilha de auditoria e painel). Em aberto:
+Fases 0 a 6 do SDD implementadas (backend, trilha de auditoria e painel), com suporte a **Shopify, Nuvemshop e Wake**.
 
-- Validação das integrações contra lojas reais (hoje exercitadas contra plataformas simuladas nos testes).
-- Fluxo de instalação por OAuth das plataformas e GraphQL da Shopify.
-- Hospedagem e domínio do painel.
-- Validação do painel com o Auth0 real.
+**Validado**
+
+- Painel e API com o **Auth0 real**, em um tenant de desenvolvimento e em `localhost`: login, token aceito pela API, cadastro de lojista pela CLI e telas carregando dados do lojista.
+- Ambiente completo em containers (PostgreSQL, Redis, migrations, API e painel) e carga de webhooks sintéticos e assinados.
+
+**Em aberto**
+
+- **Integrações contra lojas reais** (Shopify, Nuvemshop e Wake): hoje exercitadas só contra plataformas simuladas nos testes. Na Wake, o formato exato da inscrição do webhook e dos campos do pedido veio da documentação pública e não foi testado numa loja real.
+- **Ação na Wake:** a API pública não tem "reter pedido"; hoje o RiskGuard só avalia e recomenda.
+- Fluxo de instalação por **OAuth** das plataformas e **GraphQL** da Shopify (hoje o lojista informa o token de acesso à mão).
+- **Hospedagem e domínio** do painel e da API (só roda localmente, com Docker e túnel de teste).
+- **Auth0 de produção**: o painel não foi validado fora de `localhost` (renovação silenciosa do token ao recarregar, recuperação de senha). Rotacionar o segredo da aplicação M2M que foi exposto durante os testes.
+- Subida em **um comando** para quem baixa o repositório: hoje exige um `.env` e um tenant do Auth0 configurado (ver `docs/auth0-setup.md`).
