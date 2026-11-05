@@ -1,9 +1,11 @@
 # Documento de Especificação (SDD)
 
 **Projeto:** RiskGuard - SaaS de Prevenção de Risco de Reembolso B2B
-**Versão:** 1.6.0
+**Versão:** 1.7.0
 
-> **Histórico:** 1.6.0 — **Fase 6 (frontend)** implementada em `/frontend` (Vite + React): painel do lojista com Pedidos, Ações, Configurações e Auditoria, login pelo Auth0 (ver 4.6 e `docs/auth0-setup.md`, seção 8.1). Marcado com **[1.6.0]**.
+> **Histórico:** 1.7.0 — **mais plataformas além de Shopify e Nuvemshop**: **Wake** (webhook só com o número do pedido, sem assinatura HMAC, dados buscados em `GET /pedidos/{id}`, sem bloqueio automático por ora) e o **catálogo de plataformas** (`GET /api/v1/platforms`), que permite ao painel suportar uma plataforma nova sem mudança de código (ver 4.8). Marcado com **[1.7.0]**.
+>
+> 1.6.0 — **Fase 6 (frontend)** implementada em `/frontend` (Vite + React): painel do lojista com Pedidos, Ações, Configurações e Auditoria, login pelo Auth0 (ver 4.6 e `docs/auth0-setup.md`, seção 8.1). Marcado com **[1.6.0]**.
 >
 > 1.5.0 — **trilha de auditoria** de segurança e de negócio por lojista (seção 4.7): quem mudou configurações, conexões, pediu anonimização, liberou pedido ou desativou o lojista; imutável no banco, isolada por RLS, com consulta pela API e retenção. Marcado com **[1.5.0]**.
 >
@@ -145,6 +147,16 @@ O RiskGuard é uma plataforma Multi-Tenant que visa proteger e-commerces contra 
 
 * **Fora de escopo (decisão):** autenticação (login, falha de login, MFA) fica nos logs do provedor de identidade (4.6); tentativas negadas e erros ficam nos logs da aplicação. A trilha cobre o que o lojista fez dentro do RiskGuard.
 
+### 4.8. Plataformas de e-commerce [1.7.0]
+
+* **Princípio:** o RiskGuard não é restrito a plataformas específicas. Cada plataforma é um conjunto de adaptadores (parser do webhook, verificador de autenticidade, buscador de pedido quando o webhook só traz o id, bloqueador quando há ação possível) mais uma entrada no `PlatformCatalog`. O painel lê o catálogo, então o formulário de conexão (rótulo do identificador, token obrigatório, ajuda do segredo, aviso de "só avalia") não é fixo no frontend.
+
+* **Suportadas hoje:** Shopify (HMAC, pedido completo, bloqueio por *hold*), Nuvemshop (HMAC, webhook só com o id, sinalização por nota interna) e **Wake**.
+
+* **Wake:** o webhook `pedido.novo` traz só `{ topico, evento: { loja, pedido } }` e **não é assinado**: a autenticidade é um token compartilhado em um cabeçalho que o lojista cadastra na inscrição (`X-RiskGuard-Token`), comparado em tempo constante. Os dados (e-mail, valor, data) vêm de `GET https://api.fbits.net/pedidos/{id}` com o token de acesso do lojista, que por isso é **obrigatório** na conexão. Notificações de outros tópicos são aceitas e ignoradas. A API pública da Wake não tem "reter pedido" (o antifraude personalizado exige pagamento em duas etapas e outra integração): hoje a decisão de bloquear vira `Skipped` (só avalia e recomenda). Confirmar com a Wake os códigos de situação do pedido é o pré-requisito para uma ação futura.
+
+* **Regra geral para plataformas sem ação:** a decisão de bloquear é registrada como `Skipped` com a explicação, em vez de falhar por "sem integração".
+
 ## 5. Estratégia de Qualidade e CI/CD (DevOps)
 
 Para garantir a estabilidade do SaaS B2B, o sistema deve incorporar práticas estritas de validação contínua.
@@ -270,6 +282,7 @@ Criar `.github/workflows/ci.yml`. O pipeline deve rodar em *Pull Requests* para 
 | DELETE | `/api/v1/tenants/me/connections/{platform}` ➕ | Desconecta a plataforma |
 | GET | `/api/v1/actions` ➕ | Lista as ações preventivas (paginado; filtro `status`) |
 | POST | `/api/v1/actions/{id}/release` ➕ | Libera um pedido bloqueado/sinalizado (assíncrono: 202) |
+| GET | `/api/v1/platforms` ➕ **[1.7.0]** | Plataformas suportadas e o que o painel precisa de cada uma (rótulo do identificador, token obrigatório, se há ação) |
 | GET | `/api/v1/audit-events` ➕ **[1.5.0]** | Trilha de auditoria do lojista (paginado, mais recente primeiro; filtro `action`) |
 | POST | `/api/v1/privacy/customers/anonymize` ➕ | Elimina os dados de um comprador (LGPD): body `{ "email": "..." }`, 204, idempotente |
 | GET | `/health/live`, `/health/ready` ➕ | Saúde da aplicação, do PostgreSQL e do Redis |

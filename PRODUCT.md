@@ -10,7 +10,7 @@ web
 Vite + React (SPA) em `/frontend`, escolhido pelo usuário. Tailwind CSS, shadcn/ui e TanStack React Query (exigidos pelo SDD, fase 6). Login pelo SDK SPA do Auth0 (Authorization Code + PKCE). A API é o backend .NET deste repositório, em outra origem.
 
 ## Users
-Dono ou operador de uma loja virtual (Shopify, Nuvemshop) que vende B2B/B2C e sofre com pedidos fraudulentos e reembolsos. Abre o painel no dia a dia, em sessões curtas, quase sempre no desktop e às vezes no celular. Interface em português do Brasil. Cada usuário pertence a um único lojista (tenant) e só vê os dados dele.
+Dono ou operador de uma loja virtual (hoje Shopify, Nuvemshop e Wake; o produto não é restrito a elas: novas plataformas entram como adaptadores) que vende B2B/B2C e sofre com pedidos fraudulentos e reembolsos. Abre o painel no dia a dia, em sessões curtas, quase sempre no desktop e às vezes no celular. Interface em português do Brasil. Cada usuário pertence a um único lojista (tenant) e só vê os dados dele.
 
 ## Product Purpose
 RiskGuard calcula o risco de reembolso de cada pedido assim que o webhook da loja chega, e age: bloqueia ou sinaliza pedidos de risco alto na plataforma. O painel existe para o lojista ver o que foi avaliado e feito, liberar falsos positivos, ajustar o limite de risco e o bloqueio automático, conectar as plataformas e consultar quem mudou o quê. Sucesso: o lojista confia no que o sistema fez e corrige um falso positivo em poucos cliques.

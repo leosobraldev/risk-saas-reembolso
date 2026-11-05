@@ -1,6 +1,6 @@
 # RiskGuard
 
-SaaS B2B de **prevenção de risco de reembolso** para lojas virtuais. A loja envia cada pedido por webhook (Shopify, Nuvemshop); o RiskGuard calcula um score de risco, e, quando o pedido passa do limite do lojista, **bloqueia ou sinaliza** o pedido na própria plataforma. O lojista acompanha tudo em um painel web, libera falsos positivos e consulta uma trilha de auditoria.
+SaaS B2B de **prevenção de risco de reembolso** para lojas virtuais. A loja envia cada pedido por webhook (hoje **Shopify, Nuvemshop e Wake**; novas plataformas entram como adaptadores, ver [como estender](docs/tecnico/desenvolvimento.md#adicionar-uma-plataforma)); o RiskGuard calcula um score de risco, e, quando o pedido passa do limite do lojista, **bloqueia ou sinaliza** o pedido na própria plataforma. O lojista acompanha tudo em um painel web, libera falsos positivos e consulta uma trilha de auditoria.
 
 > Especificação completa: [`docs/spec/SDD.md`](docs/spec/SDD.md). Este README é o ponto de partida; o SDD é a fonte de verdade das regras.
 
@@ -90,6 +90,8 @@ O CI (GitHub Actions, em pull requests para `main`) roda: restauração, checage
 
 | Documento | Conteúdo |
 | --- | --- |
+| [`docs/usuario/guia-do-usuario.md`](docs/usuario/guia-do-usuario.md) | **Guia do usuário** (lojista): como o risco é calculado, conectar a loja, usar o painel, perguntas frequentes |
+| [`docs/tecnico/`](docs/tecnico/README.md) | **Documentação técnica**: [arquitetura](docs/tecnico/arquitetura.md), [API](docs/tecnico/api.md), [configuração e operação](docs/tecnico/configuracao-e-operacao.md), [desenvolvimento](docs/tecnico/desenvolvimento.md) |
 | [`docs/spec/SDD.md`](docs/spec/SDD.md) | Especificação: requisitos, regras, segurança, modelo de dados, contratos de API |
 | [`docs/auth0-setup.md`](docs/auth0-setup.md) | Configuração do Auth0 (API, aplicação, Action, painel) |
 | [`docs/engineering/code-review-and-quality.md`](docs/engineering/code-review-and-quality.md) | Guia de revisão de código e qualidade |
